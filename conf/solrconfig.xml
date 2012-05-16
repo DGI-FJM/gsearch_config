@@ -29,7 +29,7 @@
   <!-- Used to specify an alternate directory to hold all index data
        other than the default ./data under the Solr home.
        If replication is in use, this should match the replication configuration. -->
-  <dataDir>${solr.data.dir:./solr/data}</dataDir>
+  <!--<dataDir>${solr.data.dir:./solr/data}</dataDir>-->
 
 
   <indexDefaults>
@@ -147,8 +147,8 @@
     -->
 
     <autoCommit> 
-      <maxDocs>1</maxDocs>
-      <maxTime>1</maxTime>
+      <maxDocs>10</maxDocs>
+      <maxTime>10000</maxTime>
     </autoCommit>
 
     <!-- The RunExecutableListener executes an external command.
@@ -365,13 +365,168 @@
   <requestHandler name="standard" class="solr.SearchHandler" default="true">
     <!-- default values for query parameters -->
      <lst name="defaults">
-       <str name="echoParams">explicit</str>
-       <!-- 
-       <int name="rows">10</int>
-       <str name="fl">*</str>
-       <str name="version">2.2</str>
-        -->
-     </lst>
+     <str name="echoParams">explicit</str>
+     <float name="tie">0.01</float>
+     <str name="qf">
+        PID^16.0
+        atm_concert_cycle_mt^4.0
+        <!--atm_program_author_mt^5.0
+        atm_performer_concert_title_mt^5.0
+        atm_score_title_mt^8.0
+        atm_performer_piece_title_mt^8.0
+        atm_performer_name_mt^5.0
+        atm_program_concert_title_mt^5.0
+        atm_performance_concert_name_mt^5.0
+        atm_program_titn_mt^10.0-->
+        atm_concert_program_titn_mt^10.0
+        <!--atm_performer_group_mt^5.0-->
+        atm_concert_group_mt^5.0
+        atm_concert_piece_mt^8.0
+        <!--atm_performer_instrument_mt^2.0
+        atm_score_composer_mt^5.0-->
+        atm_concert_player_mt^4.0
+        <!--atm_score_titn_mt^10.0
+        atm_performance_concert_cycle_mt^4.0
+        atm_performer_concert_cycle_mt^4.0
+        atm_performance_composer_name_mt^5.0
+        atm_performance_player_mt^3.0
+        atm_performance_piece_title_mt^5.0
+        atm_performance_movement_mt^2.0
+        atm_performance_inst_mt^4.0-->
+        atm_concert_composer_mt^5.0
+        atm_concert_instrument_mt^4.0
+        atm_concert_title_mt^5.0
+     </str>
+     <str name="fl">
+        * score
+     </str>
+     <str name="sort">
+       atm_type_s asc,
+       atm_concert_date_dt desc,
+       atm_eaccpf_surname_s desc,
+       atm_facet_concert_title_s asc
+     </str>
+    </lst>
+    <lst name="appends">
+        <str name="q.alt">
+            atm_type_s:"Concert"
+        </str>
+    </lst>
+  </requestHandler>
+
+  <!-- Some wise-guy likes to create new handlers too much, just so they can check names, even though the names and actual settings they provide should be INDEPENDANT! -->
+  <requestHandler name="fjm-atm" class="solr.SearchHandler">
+    <!-- default values for query parameters -->
+     <lst name="defaults">
+     <str name="echoParams">explicit</str>
+     <float name="tie">0.01</float>
+     <str name="qf">
+        PID^16.0
+        atm_concert_cycle_mts^4.0
+        atm_concert_program_titn_mts^10.0
+        atm_concert_group_mt^5.0
+        atm_concert_piece_mt^8.0
+        atm_concert_player_mt^4.0
+        atm_concert_composer_mt^5.0
+        atm_concert_instrument_mt^4.0
+        atm_concert_title_mts^5.0
+     </str>
+     <str name="fl">
+        * score
+     </str>
+     <str name="sort">
+        atm_type_s asc,
+        eaccpf_name_surname_mlt asc,
+        eaccpf_name_forename_mlt asc,
+        atm_concert_date_dt desc,
+        atm_program_date_dt desc,
+        atm_facet_piece_mlt asc,
+        atm_performance_piece_title_mlt asc,
+        atm_performer_year_s desc,
+        atm_score_title_mlt asc,
+        atm_facet_year_s desc
+     </str>
+    </lst>
+    <lst name="appends">
+        <str name="q.alt">atm_type_s:"Conciertos"</str>
+        <str name="fq">PID:atm*</str>
+    </lst>
+  </requestHandler>
+  
+  <requestHandler name="fjm-ceacs" class="solr.SearchHandler">
+    <!-- default values for query parameters -->
+   <lst name="defaults">
+     <str name="echoParams">explicit</str>
+     <float name="tie">0.01</float>
+     <str name="qf">
+        PID^16.0
+        mods_abstract_mt
+        mods_name_author_mt
+        mods_title_mt^4.0
+        mods_subTitle_mt^3.5
+        mods_host_title_mt^2.0
+        mods_dateIssued_mt
+        mods_isbn_mt^6.0
+        mods_issn_mt^6.0
+        mods_note_mt
+        mods_subject_mt^2.0
+        mods_languageTerm_mt
+        mods_genre_endnote_mt
+        mods_publisher_mt^2.0
+        mods_doi_mt^6.0
+     </str>
+     <str name="fl">
+        * score
+     </str>
+     <str name="sort">
+        score desc,
+        mods_title_s asc
+     </str>
+    </lst>
+    <lst name="appends">
+        <str name="fq">
+          rels_hasModel_uri_ms:"info:fedora/ir:citationCModel"
+          fgs_state_s:"Active"
+        </str>
+    </lst>
+  </requestHandler>
+
+  <requestHandler name="fjm-turina" class="solr.SearchHandler">
+    <!-- default values for query parameters -->
+   <lst name="defaults">
+     <str name="echoParams">explicit</str>
+     <float name="tie">0.01</float>
+     <str name="qf">
+        PID^16.0
+        mods_abstract_mt
+        mods_name_author_mt
+        mods_title_mt^4.0
+        mods_subTitle_mt^3.5
+        mods_host_title_mt^2.0
+        mods_dateIssued_mt
+        mods_isbn_mt^6.0
+        mods_issn_mt^6.0
+        mods_note_mt
+        mods_subject_mt^2.0
+        mods_languageTerm_mt
+        mods_genre_endnote_mt
+        mods_publisher_mt^2.0
+        mods_doi_mt^6.0
+     </str>
+     <str name="fl">
+        * score
+     </str>
+     <str name="sort">
+        score desc,
+        mods_title_mlt asc
+     </str>
+    </lst>
+    <lst name="appends">
+        <str name="fq">
+          rels_hasModel_uri_ms:"info:fedora/islandora:bookCModel"
+          fgs_state_s:"Active"
+        </str>
+    </lst>
   </requestHandler>
 
 
@@ -387,31 +542,21 @@
      <str name="echoParams">explicit</str>
      <float name="tie">0.01</float>
      <str name="qf">
-        text^0.5 features^1.0 name^1.2 sku^1.5 id^10.0 manu^1.1 cat^1.4
+        PID^16.0
+        <!--eaccpf_name_surname_et^8.0
+        eaccpf_name_forename_et^4.0-->
+        eaccpf_complete_et
      </str>
-     <str name="pf">
-        text^0.2 features^1.1 name^1.5 manu^1.4 manu_exact^1.9
-     </str>
-     <str name="bf">
-        ord(popularity)^0.5 recip(rord(price),1,1000,1000)^0.3
-     </str>
-     <str name="fl">
-        id,name,price,score
-     </str>
-     <str name="mm">
-        2&lt;-1 5&lt;-2 6&lt;90%
-     </str>
+     <str name="fl">PID eaccpf_complete_et</str>
      <int name="ps">100</int>
-     <str name="q.alt">*:*</str>
-     <!-- example highlighter config, enable per-query with hl=true -->     
-     <str name="hl.fl">text features name</str>
-     <!-- for this field, we want no fragmenting, just highlighting -->
-     <str name="f.name.hl.fragsize">0</str>
-     <!-- instructs Solr to return the field itself if no query terms are
-          found -->
-     <str name="f.name.hl.alternateField">name</str>
-     <str name="f.text.hl.fragmenter">regex</str> <!-- defined below -->
+     <str name="fq">rels_hasModel_ms:"atm:personCModel"</str>
+     <str name="sort">score desc</str>
+     <str name="hl">true</str>
+     <str name="hl.fl">eaccpf_complete_et</str>
     </lst>
+	<lst name="appends">
+		<str name="q.alt">*:*</str>
+	</lst>
   </requestHandler>
 
   <!-- Note how you can register the same handler multiple times with

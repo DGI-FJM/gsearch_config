@@ -189,6 +189,43 @@
         <filter class="solr.RemoveDuplicatesTokenFilterFactory"/>
       </analyzer>
     </fieldType>
+    
+    <fieldType name="mappedLowerText" class="solr.TextField">
+      <analyzer>
+        <charFilter class="solr.MappingCharFilterFactory" mapping="mapping-ISOLatin1Accent.txt"/>
+        <tokenizer class="solr.KeywordTokenizerFactory"/>
+        <filter class="solr.LowerCaseFilterFactory"/>
+      </analyzer>
+    </fieldType>
+
+    <fieldType name="mappedSnowballedText" class="solr.TextField">
+      <analyzer>
+        <charFilter class="solr.MappingCharFilterFactory" mapping="mapping-ISOLatin1Accent.txt"/>
+        <tokenizer class="solr.WhitespaceTokenizerFactory"/>
+        <filter class="solr.WordDelimiterFilterFactory" splitOnCaseChange="1" splitOnNumerics="1" stemEnglishPossesive="0" generateWordParts="1" generateNumberParts="1" catenateWords="1" catenateNumbers="0" preserveOriginal="1"/>
+        <filter class="solr.LowerCaseFilterFactory"/>
+        <filter class="solr.SnowballPorterFilterFactory" language="Spanish"/>
+        <filter class="solr.RemoveDuplicatesTokenFilterFactory"/>
+      </analyzer>
+    </fieldType>
+
+    <fieldType name="edgedText" class="solr.TextField">
+        <analyzer type="index">
+            <charFilter class="solr.MappingCharFilterFactory" mapping="mapping-ISOLatin1Accent.txt"/>
+            <tokenizer class="solr.WhitespaceTokenizerFactory"/>
+            <filter class="solr.LowerCaseFilterFactory"/>
+            <filter class="solr.SnowballPorterFilterFactory" language="Spanish"/>
+            <filter class="solr.RemoveDuplicatesTokenFilterFactory"/>
+            <!-- Max could be either shorter or longer? -->
+            <filter class="solr.EdgeNGramFilterFactory" minGramSize="1" maxGramSize="16"/>
+        </analyzer>
+        <analyzer type="query">
+            <charFilter class="solr.MappingCharFilterFactory" mapping="mapping-ISOLatin1Accent.txt"/>
+            <tokenizer class="solr.WhitespaceTokenizerFactory"/>
+            <filter class="solr.LowerCaseFilterFactory"/>
+            <filter class="solr.SnowballPorterFilterFactory" language="Spanish"/>
+        </analyzer>
+    </fieldType>
 
     <!-- This is an example of using the KeywordTokenizer along
          With various TokenFilterFactories to produce a sortable field
@@ -247,15 +284,17 @@
        fields or fields that need an index-time boost need norms.
    -->
 
-   <field name="PID" type="string" indexed="true" stored="true" required="true" /> 
+   <field name="PID" type="string" indexed="true" stored="true" required="true"/>
    
    <!-- catchall field, containing all other searchable text fields (implemented
         via copyField further on in this schema  -->
    <field name="text" type="text" indexed="true" stored="false" multiValued="true"/>
+   
+   <field name="mapped_text" type="mappedSnowballedText" indexed="true" stored="false" multiValued="true"/>
 
    <!-- non-tokenized version of manufacturer to make it easier to sort or group
         results by manufacturer.  copied from "manu" via copyField -->
-   <field name="manu_exact" type="string" indexed="true" stored="false"/>
+   <!--<field name="manu_exact" type="string" indexed="true" stored="false"/>-->
 
    <!-- Here, default is used to create a "timestamp" field indicating
         When each document was indexed.
@@ -270,20 +309,27 @@
         EXAMPLE:  name="*_i" will match any field ending in _i (like myid_i, z_i)
         Longer patterns will be matched first.  if equal size patterns
         both match, the first appearing in the schema will be used.  -->
-   <dynamicField name="*_i"  type="sint"    indexed="true"  stored="true"/>
-   <dynamicField name="*_s"  type="string"  indexed="true"  stored="true"/>
+   <dynamicField name="*_i"  type="sint"    indexed="true"  stored="true" multiValued="false"/>
+   <dynamicField name="*_s"  type="string"  indexed="true"  stored="true" multiValued="false"/>
+   <dynamicField name="*_ms"  type="string"  indexed="true"  stored="true" multiValued="true"/>
+   <dynamicField name="*_es" type="string" indexed="true" stored="true"/>
+   <dynamicField name="*_mlt" type="mappedLowerText" indexed="true" stored="true" multiValued='false'/>
+   <dynamicField name="*_et" type="edgedText" indexed="true" stored="true" multiValued="true"/>
    <dynamicField name="*_l"  type="slong"   indexed="true"  stored="true"/>
    <dynamicField name="*_t"  type="text"    indexed="true"  stored="true"/>
+   <dynamicField name="*_mt" type="mappedSnowballedText" indexed="true" stored="true" multiValued="true"/>
+   <dynamicField name="*_mts" type="mappedSnowballedText" indexed="true" stored="true" multiValued='false'/>
    <dynamicField name="*_b"  type="boolean" indexed="true"  stored="true"/>
    <dynamicField name="*_f"  type="sfloat"  indexed="true"  stored="true"/>
    <dynamicField name="*_d"  type="sdouble" indexed="true"  stored="true"/>
    <dynamicField name="*_dt" type="date"    indexed="true"  stored="true"/>
-
+   <dynamicField name="*_store" type="string" indexed="false" stored="true" multiValued="true" compressed="true"/> <!-- Store stuff that is not to be searched... -->
    <!-- uncomment the following to ignore any fields that don't already match an existing 
         field name or dynamic field, rather than reporting them as an error. 
         alternately, change the type="ignored" to some other type e.g. "text" if you want 
         unknown fields indexed and/or stored by default --> 
    <field name="dc.description" type="text_fgs"  indexed="true"  stored="true" multiValued="true"/>
+   <field name="ocr" type="text" indexed="true" stored="false" multiValued="true"/>
    <dynamicField name="*" type="text_fgs"  indexed="true"  stored="true" multiValued="true"/>
    
  </fields>
@@ -297,11 +343,21 @@
  <defaultSearchField>dc.description</defaultSearchField>
 
  <!-- SolrQueryParser configuration: defaultOperator="AND|OR" -->
- <solrQueryParser defaultOperator="OR"/>
+ <solrQueryParser defaultOperator="AND"/>
 
   <!-- copyField commands copy one field to another at the time a document
         is added to the index.  It's used either to index the same field differently,
         or to add multiple fields to the same field for easier/faster searching.  -->
+
+ <copyField source="*_s" dest="*_ms"/>
+ <copyField source="*_s" dest="*_mts"/>
+ <copyField source="*_s" dest="*_mlt"/>
+ <copyField source="*_es" dest="*_et"/>
+ <copyField source="*_es" dest="*_mlt"/>
+ <copyField source="*_et" dest="*_ms"/>
+ <copyField source="*_ms" dest="*_mt"/>
+ <copyField source="atm_concert_*" dest="mapped_text"/>
+ 
 
  <!-- Similarity is the scoring routine for each document vs. a query.
       A custom similarity may be specified here, but the default is fine
