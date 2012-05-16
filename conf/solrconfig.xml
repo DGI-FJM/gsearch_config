@@ -523,8 +523,9 @@
     </lst>
     <lst name="appends">
         <str name="fq">
-          rels_hasModel_uri_ms:"info:fedora/islandora:bookCModel"
-          fgs_state_s:"Active"
+          +PID:jt*
+          +rels_hasModel_uri_ms:"info:fedora/islandora:bookCModel"
+          +fgs_state_s:"Active"
         </str>
     </lst>
   </requestHandler>
