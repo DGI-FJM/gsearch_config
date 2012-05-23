@@ -219,6 +219,7 @@ WHERE {
 
       <!-- Names and Roles -->
     <xsl:apply-templates select="foxml:datastream[@ID='MODS']/foxml:datastreamVersion[last()]/foxml:xmlContent//mods:mods" mode="default"/>
+    <xsl:apply-templates select="foxml:datastream[@ID='MODS']/foxml:datastreamVersion[last()]/foxml:xmlContent//mods:mods" mode="turina"/>
     
     <!-- store an escaped copy of MODS... -->
     <xsl:if test="foxml:datastream[@ID='MODS']/foxml:datastreamVersion[last()]/foxml:xmlContent//mods:mods">
@@ -739,6 +740,21 @@ WHERE {
   
   </xsl:template>
   <!-- End Basic MODS -->
+  
+  <xsl:template match="mods:mods" mode="turina">
+    <field name="turina_type_s">
+      <xsl:choose>
+        <xsl:when test="starts-with(normalize-space(mods:location/mods:shelfLocation/text()), 'LJT-P')">Partitura</xsl:when>
+        <xsl:when test="starts-with(normalize-space(mods:location/mods:shelfLocation/text()), 'LJT-M')">Manuscrito</xsl:when>
+        <xsl:when test="starts-with(normalize-space(mods:location/mods:shelfLocation/text()), 'LJT-Cor')">Correspondencia</xsl:when>
+        <xsl:when test="starts-with(normalize-space(mods:genre[@authority='Joaquín_Turina']/text()), 'Programa')">Programa de Mano</xsl:when>
+        <xsl:when test="starts-with(normalize-space(mods:genre[@authority='Joaquín_Turina']/text()), 'Tarjeta Postal') or 
+          starts-with(normalize-space(mods:genre[@authority='Joaquín_Turina']/text()), 'Fotografîa')">Archivo Fotográfico</xsl:when>
+        <xsl:otherwise>Unknown types</xsl:otherwise>
+      </xsl:choose>
+      <xsl:message>ASDF: <xsl:value-of select="mods:genre[@authority='Joaquín_Turina']/text()"/></xsl:message>
+    </field>
+  </xsl:template>
   
   <xsl:template match="rdf:RDF">
     <xsl:param name="prefix">rels_</xsl:param>
