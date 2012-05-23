@@ -524,7 +524,7 @@
     <lst name="appends">
         <str name="fq">
           +PID:jt*
-          +rels_hasModel_uri_ms:"info:fedora/islandora:bookCModel"
+          +rels_hasModel_uri_ms:"info:fedora/jt:bookCModel"
           +fgs_state_s:"Active"
         </str>
     </lst>
