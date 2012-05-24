@@ -357,6 +357,9 @@
  <copyField source="*_et" dest="*_ms"/>
  <copyField source="*_ms" dest="*_mt"/>
  <copyField source="atm_concert_*" dest="mapped_text"/>
+ <copyField source="mods_subject_*" dest="mods_subject_ms"/>
+ <copyField source="mods_genre_*" dest="mods_genre_ms"/>
+ <copyField source="mods_name_*" dest="mods_name_ms"/>
  
 
  <!-- Similarity is the scoring routine for each document vs. a query.
