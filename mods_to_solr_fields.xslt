@@ -202,7 +202,7 @@
     <xsl:if test="$text_value">
       <field>
         <xsl:attribute name="name">
-          <xsl:value-of select="concat($prefix, local-name(), $type, $suffix)"/>
+          <xsl:value-of select="concat($prefix, local-name(), '_', $type, $suffix)"/>
         </xsl:attribute>
         <xsl:value-of select="$text_value"/>
       </field>
@@ -252,6 +252,18 @@
       </xsl:call-template>
     </field>
     
+    <xsl:for-each select="mods:displayForm">
+      <xsl:variable name="text_value" select="normalize-space(text())"/>
+      <xsl:if test="$text_value">
+        <field>
+          <xsl:attribute name="name">
+            <xsl:value-of select="concat($prefix, 'name_', $spec, '_', local-name(), $suffix)"/>
+          </xsl:attribute>
+          <xsl:value-of select="$text_value"/>
+        </field>
+      </xsl:if>
+    </xsl:for-each>
+    
     <field>
       <xsl:attribute name="name">
         <xsl:value-of select="concat($prefix, 'name_associated', $spec, $suffix)"/>
@@ -276,7 +288,7 @@
   <xsl:template name="name_parts_given_last">
     <xsl:param name="node"/>
     
-    <xsl:for-each select="$node/mods:namePart[not(@type='given')]">
+    <xsl:for-each select="$node/mods:namePart[@type='family']">
       <xsl:variable name="text_value" select="normalize-space(text())"/>
       <xsl:if test="$text_value">
         <xsl:value-of select="$text_value"/>
@@ -284,7 +296,7 @@
           <xsl:when test="position()!=last()">
             <xsl:text> </xsl:text>
           </xsl:when>
-          <xsl:when test="position()=last() and $node/mods:namePart[@type='given']">
+          <xsl:when test="position()=last() and $node/mods:namePart[not(@type='family')]">
             <xsl:text>, </xsl:text>
           </xsl:when>
         </xsl:choose>
@@ -292,6 +304,24 @@
     </xsl:for-each>
       
     <xsl:for-each select="$node/mods:namePart[@type='given']">
+      <xsl:variable name="text_value" select="normalize-space(text())"/>
+      <xsl:if test="$text_value">
+        <xsl:value-of select="$text_value"/>
+        <xsl:if test="string-length($text_value)=1">
+          <xsl:text>.</xsl:text>
+        </xsl:if>
+        <xsl:choose>
+          <xsl:when test="position()!=last()">
+            <xsl:text> </xsl:text>
+          </xsl:when>
+          <xsl:when test="position()=last() and $node/mods:namePart[not(@type='family' or @type='given')]">
+            <xsl:text>, </xsl:text>
+          </xsl:when>
+        </xsl:choose>
+      </xsl:if>
+    </xsl:for-each>
+    
+    <xsl:for-each select="$node/mods:namePart[not(@type='family' or @type='given')]">
       <xsl:variable name="text_value" select="normalize-space(text())"/>
       <xsl:if test="$text_value">
         <xsl:value-of select="normalize-space(text())"/>
@@ -312,18 +342,28 @@
         <xsl:value-of select="$text_value"/>
         
         <!--  use as an initial -->
-        <xsl:if test="string-length(text())=1">
+        <xsl:if test="string-length($text_value)=1">
           <xsl:text>.</xsl:text>
         </xsl:if>
         <xsl:text> </xsl:text>
       </xsl:if>
     </xsl:for-each>
-      
-    <!-- Other parts -->
-    <xsl:for-each select="$node/mods:namePart[not(@type='given')]">
+    
+    <xsl:for-each select="$node/mods:namePart[@type='family']">
       <xsl:variable name="text_value" select="normalize-space(text())"/>
       <xsl:if test="$text_value">
-        <xsl:value-of select="normalize-space(text())"/>
+        <xsl:value-of select="$text_value"/>
+        <xsl:if test="position()!=last()">
+          <xsl:text> </xsl:text>
+        </xsl:if>
+      </xsl:if>
+    </xsl:for-each>
+      
+    <!-- Other parts -->
+    <xsl:for-each select="$node/mods:namePart[not(@type='given' or @type='family')]">
+      <xsl:variable name="text_value" select="normalize-space(text())"/>
+      <xsl:if test="$text_value">
+        <xsl:value-of select="$text_value"/>
         <xsl:if test="position()!=last()">
           <xsl:text> </xsl:text>
         </xsl:if>
