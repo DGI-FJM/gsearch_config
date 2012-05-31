@@ -62,11 +62,13 @@
     <xsl:variable name="base_title" select="normalize-space(mods:title/text())"/>
     <xsl:variable name="non_sort" select="normalize-space(mods:nonSort/text())"/>
     <xsl:variable name="sub_title" select="normalize-space(mods:subTitle/text())"/>
+    <xsl:variable name="type" select="normalize-space(@type)"/>
 
     <xsl:call-template name="title_info">
       <xsl:with-param name="base_title" select="$base_title"/>
       <xsl:with-param name="non_sort" select="$non_sort"/>
       <xsl:with-param name="sub_title" select="$sub_title"/>
+      <xsl:with-param name="type" select="$type"/>
       <xsl:with-param name="prefix" select="$prefix"/>
       <xsl:with-param name="suffix" select="$suffix"/>
     </xsl:call-template>
@@ -77,6 +79,7 @@
         <xsl:with-param name="base_title" select="$base_title"/>
         <xsl:with-param name="non_sort" select="$non_sort"/>
         <xsl:with-param name="sub_title" select="$sub_title"/>
+        <xsl:with-param name="type" select="$type"/>
         <xsl:with-param name="prefix" select="$prefix"/>
         <xsl:with-param name="suffix">_mlt</xsl:with-param>
       </xsl:call-template>
@@ -90,22 +93,50 @@
     <xsl:param name="base_title" select="normalize-space($node/mods:title/text())"/>
     <xsl:param name="non_sort" select="normalize-space($node/mods:nonSort/text())"/>
     <xsl:param name="sub_title" select="normalize-space($node/mods:subTitle/text())"/>
+    <xsl:param name="type" select="normalize-space($node/@type)"/>
     
     <xsl:if test="$base_title">
       <field>
         <xsl:attribute name="name">
-          <xsl:value-of select="concat($prefix, 'title', $suffix)"/>
+          <xsl:choose>
+            <xsl:when test="$type">
+              <xsl:value-of select="concat($prefix, 'title_', $type, $suffix)"/>
+            </xsl:when>
+            <xsl:otherwise>
+              <xsl:value-of select="concat($prefix, 'title_local', $suffix)"/>
+            </xsl:otherwise>
+          </xsl:choose>
         </xsl:attribute>
-        <xsl:if test="$non_sort">
-          <xsl:value-of select="$non_sort"/>
-          <xsl:text> </xsl:text>
-        </xsl:if>
-        <xsl:value-of select="$base_title"/>
-        <xsl:if test="$sub_title">
-          <xsl:text>: </xsl:text>
-          <xsl:value-of select="$sub_title"/>
-        </xsl:if>
+        <xsl:call-template name="title_info_title">
+          <xsl:with-param name="node" select="$node"/>
+          <xsl:with-param name="base_title" select="$base_title"/>
+          <xsl:with-param name="non_sort" select="$non_sort"/>
+          <xsl:with-param name="sub_title" select="$sub_title"/>
+        </xsl:call-template>
       </field>
+    </xsl:if>
+  </xsl:template>
+  
+  <xsl:template name="title_info_title">
+    <xsl:param name="node"/>
+    <xsl:param name="base_title" select="normalize-space($node/mods:title/text())"/>
+    <xsl:param name="non_sort" select="normalize-space($node/mods:nonSort/text())"/>
+    <xsl:param name="sub_title" select="normalize-space($node/mods:subTitle/text())"/>
+    
+    <xsl:if test="$base_title">
+      <xsl:if test="$non_sort">
+        <xsl:value-of select="$non_sort"/>
+        <xsl:text> </xsl:text>
+      </xsl:if>
+      <xsl:value-of select="$base_title"/>
+      <xsl:if test="$sub_title">
+        <xsl:text>: </xsl:text>
+        <xsl:value-of select="$sub_title"/>
+      </xsl:if>
+      <xsl:if test="$non_sort">
+        <xsl:text>, </xsl:text>
+        <xsl:value-of select="$non_sort"/>
+      </xsl:if>
     </xsl:if>
   </xsl:template>
 
@@ -276,7 +307,7 @@
   <xsl:template name="name_parts_given_last">
     <xsl:param name="node"/>
     
-    <xsl:for-each select="$node/mods:namePart[not(@type='given')]">
+    <xsl:for-each select="$node/mods:namePart[@type='family']">
       <xsl:variable name="text_value" select="normalize-space(text())"/>
       <xsl:if test="$text_value">
         <xsl:value-of select="$text_value"/>
@@ -284,7 +315,7 @@
           <xsl:when test="position()!=last()">
             <xsl:text> </xsl:text>
           </xsl:when>
-          <xsl:when test="position()=last() and $node/mods:namePart[@type='given']">
+          <xsl:when test="position()=last() and $node/mods:namePart[not(@type='family')]">
             <xsl:text>, </xsl:text>
           </xsl:when>
         </xsl:choose>
@@ -292,6 +323,24 @@
     </xsl:for-each>
       
     <xsl:for-each select="$node/mods:namePart[@type='given']">
+      <xsl:variable name="text_value" select="normalize-space(text())"/>
+      <xsl:if test="$text_value">
+        <xsl:value-of select="$text_value"/>
+        <xsl:if test="string-length($text_value)=1">
+          <xsl:text>.</xsl:text>
+        </xsl:if>
+        <xsl:choose>
+          <xsl:when test="position()!=last()">
+            <xsl:text> </xsl:text>
+          </xsl:when>
+          <xsl:when test="position()=last() and $node/mods:namePart[not(@type='family' or @type='given')]">
+            <xsl:text>, </xsl:text>
+          </xsl:when>
+        </xsl:choose>
+      </xsl:if>
+    </xsl:for-each>
+    
+    <xsl:for-each select="$node/mods:namePart[not(@type='family' or @type='given')]">
       <xsl:variable name="text_value" select="normalize-space(text())"/>
       <xsl:if test="$text_value">
         <xsl:value-of select="normalize-space(text())"/>
@@ -312,18 +361,28 @@
         <xsl:value-of select="$text_value"/>
         
         <!--  use as an initial -->
-        <xsl:if test="string-length(text())=1">
+        <xsl:if test="string-length($text_value)=1">
           <xsl:text>.</xsl:text>
         </xsl:if>
         <xsl:text> </xsl:text>
       </xsl:if>
     </xsl:for-each>
-      
-    <!-- Other parts -->
-    <xsl:for-each select="$node/mods:namePart[not(@type='given')]">
+    
+    <xsl:for-each select="$node/mods:namePart[@type='family']">
       <xsl:variable name="text_value" select="normalize-space(text())"/>
       <xsl:if test="$text_value">
-        <xsl:value-of select="normalize-space(text())"/>
+        <xsl:value-of select="$text_value"/>
+        <xsl:if test="position()!=last()">
+          <xsl:text> </xsl:text>
+        </xsl:if>
+      </xsl:if>
+    </xsl:for-each>
+      
+    <!-- Other parts -->
+    <xsl:for-each select="$node/mods:namePart[not(@type='given' or @type='family')]">
+      <xsl:variable name="text_value" select="normalize-space(text())"/>
+      <xsl:if test="$text_value">
+        <xsl:value-of select="$text_value"/>
         <xsl:if test="position()!=last()">
           <xsl:text> </xsl:text>
         </xsl:if>
@@ -358,6 +417,35 @@
   <xsl:template match="mods:subject">
     <xsl:param name="prefix">mods_</xsl:param>
     <xsl:param name="suffix">_ms</xsl:param>
+    
+      <xsl:if test="./*">
+        <field>
+          <xsl:attribute name="name">
+            <xsl:value-of select="concat($prefix, 'subject', $suffix)"/>
+          </xsl:attribute>
+          <xsl:for-each select="./*">
+            <xsl:variable name="text_value">
+              <xsl:choose>
+                <xsl:when test="local-name()='title'">
+                  <xsl:call-template name="title_info_title">
+                    <xsl:with-param name="node" select="."/>
+                  </xsl:call-template>
+                </xsl:when>
+                <xsl:when test="local-name()='name'">
+                  <xsl:call-template name=""
+                </xsl:when>
+                <xsl:otherwise>
+                  <xsl:value-of select="normalize-space(text())"/>
+                </xsl:otherwise>
+              </xsl:choose>
+            </xsl:variable>
+            <xsl:if test="position()!=last()">
+              <xsl:text>--</xsl:text>
+            </xsl:if>
+          </xsl:for-each>
+        </field>
+      </xsl:if>
+    
     
     <xsl:apply-templates>
       <xsl:with-param name="prefix" select="concat($prefix, 'subject_')"/>

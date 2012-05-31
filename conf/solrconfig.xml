@@ -530,7 +530,38 @@
     </lst>
   </requestHandler>
 
-
+  <requestHandler name="fjm-ensayos" class="solr.SearchHandler">  
+     <!-- default values for query parameters -->
+     <lst name="defaults">
+     <str name="echoParams">explicit</str>
+     <float name="tie">0.01</float>
+     <str name="qf">
+        PID^16.0
+        atm_concert_cycle_mt^4.0
+        atm_concert_program_titn_mt^10.0
+        atm_concert_group_mt^5.0
+        atm_concert_piece_mt^8.0
+        atm_concert_player_mt^4.0
+        atm_concert_composer_mt^5.0
+        atm_concert_instrument_mt^4.0
+        atm_concert_title_mt^5.0
+     </str>
+     <str name="fl">
+        * score
+     </str>
+     <str name="sort">
+       atm_type_s asc,
+       atm_concert_date_dt desc,
+       atm_eaccpf_surname_s desc,
+       atm_facet_concert_title_s asc
+     </str>
+    </lst>
+    <lst name="appends">
+        <str name="q.alt">
+            atm_type_s:"Concert"
+        </str>
+    </lst>
+  </requestHandler>
   <!-- DisMaxRequestHandler allows easy searching across multiple fields
        for simple user-entered phrases.  It's implementation is now
        just the standard SearchHandler with a default query type
