@@ -276,12 +276,25 @@ WHERE {
   <xsl:template match="foxml:property">
     <xsl:param name="prefix">fgs_</xsl:param>
     <xsl:param name="suffix">_s</xsl:param>
+    <xsl:param name="date_suffix">_dt</xsl:param>
+    
+    <xsl:variable name="name" select="substring-after(@NAME,'#')"/>
+    
     <field>
       <xsl:attribute name="name">
-        <xsl:value-of select="concat($prefix, substring-after(@NAME,'#'), $suffix)"/>
+        <xsl:value-of select="concat($prefix, $name, $suffix)"/>
       </xsl:attribute>
       <xsl:value-of select="@VALUE"/>
     </field>
+    
+    <xsl:if test="$name='lastModifiedDate' or $name='createdDate'">
+      <field>
+        <xsl:attribute name="name">
+          <xsl:value-of select="concat($prefix, $name, $date_suffix)"/>
+        </xsl:attribute>
+        <xsl:value-of select="@VALUE"/>
+      </field>
+    </xsl:if>
   </xsl:template>
   
 
