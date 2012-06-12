@@ -66,86 +66,18 @@
       <!-- The following allows only active FedoraObjects to be indexed. -->
       <xsl:if test="foxml:digitalObject/foxml:objectProperties/foxml:property[@NAME='info:fedora/fedora-system:def/model#state']">
         <xsl:if test="not(foxml:digitalObject/foxml:datastream[@ID='METHODMAP' or @ID='DS-COMPOSITE-MODEL'])">
-          <xsl:choose>
-            <xsl:when test="starts-with($PID,'atm')">
-              <xsl:call-template name="fjm-atm">
-                <xsl:with-param name="pid" select="$PID"/>
-              </xsl:call-template>
-            </xsl:when>
-            <xsl:when test="starts-with($PID, 'jt')">
-              <doc>
-                <xsl:apply-templates select="/foxml:digitalObject" mode="activeFedoraObject">
-                  <xsl:with-param name="PID" select="$PID"/>
-                </xsl:apply-templates>
-                <xsl:apply-templates select="/foxml:digitalObject" mode="add-turina-thumbnail">
-                  <xsl:with-param name="pid" select="$PID"/>
-                </xsl:apply-templates>
-              </doc>
-            </xsl:when>
-            <xsl:otherwise>
-              <doc>
-                <xsl:choose>
-                  <xsl:when test="foxml:digitalObject/foxml:objectProperties/foxml:property[@VALUE='Active']">
-                    <xsl:apply-templates select="/foxml:digitalObject" mode="activeFedoraObject">
-                      <xsl:with-param name="PID" select="$PID"/>
-                    </xsl:apply-templates>
-                  </xsl:when>
-                  <xsl:when test="foxml:digitalObject/foxml:objectProperties/foxml:property[@VALUE='Inactive']">
-                    <xsl:apply-templates select="/foxml:digitalObject" mode="inactiveFedoraObject">
-                      <xsl:with-param name="PID" select="$PID"/>
-                    </xsl:apply-templates>
-                  </xsl:when>
-                  <xsl:when test="foxml:digitalObject/foxml:objectProperties/foxml:property[@VALUE='Deleted']">
-                    <xsl:apply-templates select="/foxml:digitalObject" mode="deletedFedoraObject">
-                      <xsl:with-param name="PID" select="$PID"/>
-                    </xsl:apply-templates>
-                  </xsl:when>
-                  <xsl:otherwise>
-                      <field name="PID"><xsl:value-of select="$PID"/></field>
-                      <field name="error_s"><xsl:text>What kinda state is this!?</xsl:text></field>
-                  </xsl:otherwise>
-                </xsl:choose>
-              </doc>
-            </xsl:otherwise>
-          </xsl:choose>
+          <xsl:if test="starts-with($PID, 'cam')">
+            <doc>
+              <xsl:apply-templates select="/foxml:digitalObject" mode="activeFedoraObject">
+                <xsl:with-param name="PID" select="$PID"/>
+              </xsl:apply-templates>
+            </doc>
+          </xsl:if>
         </xsl:if>
       </xsl:if>
     </add>
   </xsl:template>
   
-  <xsl:template match="/foxml:digitalObject" mode="add-turina-thumbnail">
-    <xsl:param name="pid"/>
-    
-    <xsl:variable name="results_tf">
-      <xsl:call-template name="perform_query">
-        <xsl:with-param name="query">
-PREFIX fre: &lt;info:fedora/fedora-system:def/relations-external#&gt;
-PREFIX fm: &lt;info:fedora/fedora-system:def/model#&gt;
-PREFIX fv: &lt;info:fedora/fedora-system:def/view#&gt;
-PREFIX ip: &lt;info:islandora/islandora-system:def/pageinfo#&gt;
-SELECT ?thumbnail ?thumbnail_obj
-FROM &lt;#ri&gt;
-WHERE {
-  ?thumbnail_obj ip:isPageOf ?this ;
-                 fm:state fm:Active ;
-                 fv:disseminates ?thumbnail .
-  ?thumbnail fv:disseminationType &lt;info:fedora/*/TN&gt; ;
-       fm:state fm:Active .
-  ?this fm:state fm:Active
-  FILTER(sameTerm(?this, &lt;info:fedora/<xsl:value-of select="$pid"/>&gt;)) .
-}
-        </xsl:with-param>
-        <xsl:with-param name='lang'>sparql</xsl:with-param>
-      </xsl:call-template>
-    </xsl:variable>
-    
-    <xsl:for-each select="xalan:nodeset($results_tf)/res:sparql/res:results/res:result[position() = 1]">
-      <field name="turina_thumbnail_s">
-        <xsl:value-of select="substring-after(res:thumbnail_obj/@uri, 'info:fedora/')"/>
-      </field>
-    </xsl:for-each>
-  </xsl:template>
-
   <xsl:template match="/foxml:digitalObject" mode="activeFedoraObject">
     <xsl:param name="PID"/>
 
@@ -218,7 +150,6 @@ WHERE {
 
       <!-- Names and Roles -->
     <xsl:apply-templates select="foxml:datastream[@ID='MODS']/foxml:datastreamVersion[last()]/foxml:xmlContent//mods:mods" mode="default"/>
-    <xsl:apply-templates select="foxml:datastream[@ID='MODS']/foxml:datastreamVersion[last()]/foxml:xmlContent//mods:mods" mode="turina"/>
     
     <!-- store an escaped copy of MODS... -->
     <xsl:if test="foxml:datastream[@ID='MODS']/foxml:datastreamVersion[last()]/foxml:xmlContent//mods:mods">
@@ -294,24 +225,6 @@ WHERE {
         <xsl:value-of select="@VALUE"/>
       </field>
     </xsl:if>
-  </xsl:template>
-  
-
-  
-  <xsl:template match="mods:mods" mode="turina">
-    <field name="turina_type_s">
-      <xsl:choose>
-        <xsl:when test="starts-with(normalize-space(mods:location/mods:shelfLocation/text()), 'LJT-P-')">Partitura</xsl:when>
-        <xsl:when test="starts-with(normalize-space(mods:location/mods:shelfLocation/text()), 'LJT-Pre-')">Prensa</xsl:when>
-        <xsl:when test="starts-with(normalize-space(mods:location/mods:shelfLocation/text()), 'LJT-M')">Manuscrito</xsl:when>
-        <xsl:when test="starts-with(normalize-space(mods:location/mods:shelfLocation/text()), 'LJT-Cor')">Correspondencia</xsl:when>
-        <xsl:when test="starts-with(normalize-space(mods:genre[@authority='Joaquín_Turina']/text()), 'Programa')">Programa de Mano</xsl:when>
-        <xsl:when test="starts-with(normalize-space(mods:genre[@authority='Joaquín_Turina']/text()), 'Tarjeta Postal') or 
-          starts-with(normalize-space(mods:genre[@authority='Joaquín_Turina']/text()), 'Fotografîa')">Archivo Fotográfico</xsl:when>
-        <xsl:when test="starts-with(normalize-space(mods:genre[@authority='ingest']/text()), 'Diarios')">Diario</xsl:when>
-        <xsl:otherwise>Unknown types</xsl:otherwise>
-      </xsl:choose>
-    </field>
   </xsl:template>
   
   <xsl:template match="rdf:RDF">
@@ -434,80 +347,6 @@ WHERE {
     </xsl:if>
   </xsl:template>
 
-  <xsl:template match="eaccpf:eac-cpf" mode="fjm">
-    <xsl:param name="pid"/>
-    <xsl:param name="prefix">eaccpf_</xsl:param>
-    <xsl:param name="suffix">_et</xsl:param>
-    
-    <xsl:variable name="TN_TF">
-      <xsl:call-template name="perform_query">
-        <xsl:with-param name="lang">sparql</xsl:with-param>
-        <xsl:with-param name="query">
-PREFIX ir-rel: &lt;http://digital.march.es/ceacs#&gt;
-SELECT $tn_pid
-WHERE {
-  $tn_pid ir-rel:iconOf &lt;info:fedora/<xsl:value-of select="$pid"/>&gt;
-}
-        </xsl:with-param>
-      </xsl:call-template>
-    </xsl:variable>
-    <xsl:for-each select="xalan:nodeset($TN_TF)/res:sparql/res:results/res:result[1]/res:tn_pid">
-      <field>
-        <xsl:attribute name="name">
-          <xsl:value-of select="concat($prefix, 'thumbnail_object', $suffix)"/>
-        </xsl:attribute>
-        <xsl:value-of select="substring-after(@uri, '/')"/>
-      </field>
-    </xsl:for-each>
-    
-    <xsl:for-each select='(eaccpf:cpfDescription/eaccpf:relations/eaccpf:resourceRelation[eaccpf:descriptiveNote/eaccpf:p/text()="Academic page"])[1]'>
-      <field>
-        <xsl:attribute name="name">
-          <xsl:value-of select="concat($prefix, 'academic_page', $suffix)"/>
-        </xsl:attribute>
-        <xsl:value-of select="@xlink:href"/>
-      </field>
-    </xsl:for-each>
-    
-    <xsl:for-each select='(eaccpf:cpfDescription/eaccpf:relations/eaccpf:cpfRelation[starts-with(eaccpf:relationEntry/text(), "Institute Juan March")])[1]'>
-      <field>
-        <xsl:attribute name="name">
-          <xsl:value-of select="concat($prefix, 'ceacs_member', '_b')"/>
-        </xsl:attribute>
-        <xsl:text>true</xsl:text>
-      </field>
-      <field>
-        <xsl:attribute name="name">
-          <xsl:value-of select="concat($prefix, 'ceacs_role', $suffix)"/>
-        </xsl:attribute>
-        <xsl:value-of select="normalize-space(eaccpf:relationEntry/text())"/>
-        
-        <xsl:variable name="dateInfo">
-          <xsl:choose>
-            <xsl:when test="substring(eaccpf:relationEntry/text(), string-length(eaccpf:relationEntry/text()) - 3, 'PhD')">
-              <xsl:value-of select="../../eaccpf:description/eaccpf:biogHist/eaccpf:chronList/eaccpf:chronItem[eaccpf:event/text()='Achieved PhD']/eaccpf:date/@standardDate"/>
-            </xsl:when>
-            <xsl:when test="eaccpf:dateRange">
-              <xsl:if test="eaccpf:dateRange/eaccpf:fromDate">
-                <xsl:value-of select="eaccpf:dateRange/eaccpf:fromDate/text()"/>
-              </xsl:if>
-              <xsl:text>-</xsl:text>
-              <xsl:if test="eaccpf:dateRange/eaccpf:toDate">
-                <xsl:value-of select="eaccpf:dateRange/eaccpf:toDate/text()"/>
-              </xsl:if>
-            </xsl:when>
-          </xsl:choose>
-        </xsl:variable>
-        
-        <xsl:if test="not($dateInfo='')">
-          <xsl:text> (</xsl:text>
-          <xsl:value-of select="$dateInfo"/>
-          <xsl:text>)</xsl:text>
-        </xsl:if>
-      </field>
-    </xsl:for-each>
-  </xsl:template>
-  
   <!-- Create fields for the set of selected elements, named according to the 'local-name' and containing the 'text' -->
   <xsl:template match="*" mode="simple_set">
     <xsl:param name="prefix">changeme_</xsl:param>
