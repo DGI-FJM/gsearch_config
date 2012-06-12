@@ -22,8 +22,7 @@
   xmlns:res="http://www.w3.org/2001/sw/DataAccess/rf1/result"
   xmlns:xalan="http://xml.apache.org/xalan"
   xmlns:xlink="http://www.w3.org/1999/xlink">
-  <xsl:output method="xml" indent="yes" encoding="UTF-8"/>
-  
+  <xsl:output method="xml" indent="yes" encoding="UTF-8"/>  
   <xsl:include href="file:///usr/local/fedora/tomcat/webapps/fedoragsearch/WEB-INF/classes/config/index/common/basicFJMToSolr.xslt"/>
   <xsl:include href="file:///usr/local/fedora/tomcat/webapps/fedoragsearch/WEB-INF/classes/config/index/common/escape_xml.xslt"/>
   <xsl:include href="file:///usr/local/fedora/tomcat/webapps/fedoragsearch/WEB-INF/classes/config/index/common/mods_to_solr_fields.xslt"/>

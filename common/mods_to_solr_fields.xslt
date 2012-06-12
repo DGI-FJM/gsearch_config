@@ -65,6 +65,7 @@
     <xsl:variable name="type" select="normalize-space(@type)"/>
 
     <xsl:call-template name="title_info">
+      <xsl:with-param name="node" select="current()"/>
       <xsl:with-param name="base_title" select="$base_title"/>
       <xsl:with-param name="non_sort" select="$non_sort"/>
       <xsl:with-param name="sub_title" select="$sub_title"/>
@@ -76,6 +77,7 @@
     <!-- bit of a hack so it can be sorted on... -->
     <xsl:if test="position()=1">
       <xsl:call-template name="title_info">
+        <xsl:with-param name="node" select="current()"/>
         <xsl:with-param name="base_title" select="$base_title"/>
         <xsl:with-param name="non_sort" select="$non_sort"/>
         <xsl:with-param name="sub_title" select="$sub_title"/>
@@ -87,7 +89,7 @@
   </xsl:template>
   
   <xsl:template name="title_info">
-    <xsl:param name="node"/>
+    <xsl:param name="node" select="node()"/>
     <xsl:param name="prefix">mods_</xsl:param>
     <xsl:param name="suffix">_ms</xsl:param>
     <xsl:param name="base_title" select="normalize-space($node/mods:title/text())"/>
@@ -403,13 +405,14 @@
   </xsl:template>
 
     <!-- Notes -->
-  <xsl:template match="mods:note | mods:topic | mods:geographic | mods:temporal
-    | mods:occupation | mods:continent | mods:country | mods:province | mods:region
-    | mods:state | mods:territory | mods:county | mods:city | mods:island |
+  <xsl:template match="mods:note | mods:topic | mods:geographic | mods:temporal | 
+    mods:occupation | mods:continent | mods:country | mods:province | mods:region |
+    mods:state | mods:territory | mods:county | mods:city | mods:island |
     mods:area | mods:extraTerrestrialArea | mods:citySection |
     mods:geographicCode | mods:number | mods:caption | mods:title | mods:start |
-    mods:end | mods:total | mods:list | mods:date | mods:text | mods:form | mods:reformattingQuality
-    | mods:internetMediaType | mods:extent | mods:digitalOrigin | mods:publisher | mods:edition |
+    mods:end | mods:total | mods:list | mods:date | mods:text | mods:form |
+    mods:reformattingQuality | mods:internetMediaType | mods:extent |
+    mods:digitalOrigin | mods:publisher | mods:edition |
     mods:language/mods:languageTerm | mods:issuance">
     <xsl:param name="prefix">mods_</xsl:param>
     <xsl:param name="suffix">_ms</xsl:param>
@@ -424,6 +427,22 @@
       </field>
     </xsl:if>
   </xsl:template>
+  
+  <xsl:template match="mods:name" mode="subject_content">
+    <xsl:call-template name="name_parts_given_last">
+      <xsl:with-param name="node" select="current()"/>
+    </xsl:call-template>
+  </xsl:template>
+
+  <xsl:template match="mods:title" mode="subject_content">
+    <xsl:call-template name="title_info_title">
+      <xsl:with-param name="node" select="current()"/>
+    </xsl:call-template>
+  </xsl:template>
+  
+  <xsl:template match="*" mode="subject_content">
+    <xsl:value-of select="normalize-space(text())"/>
+  </xsl:template>
 
     <!-- Subjects / Keywords -->
   <xsl:template match="mods:subject">
@@ -436,21 +455,7 @@
             <xsl:value-of select="concat($prefix, 'subject', $suffix)"/>
           </xsl:attribute>
           <xsl:for-each select="./*">
-            <xsl:variable name="text_value">
-              <xsl:choose>
-                <xsl:when test="local-name()='title'">
-                  <xsl:call-template name="title_info_title">
-                    <xsl:with-param name="node" select="."/>
-                  </xsl:call-template>
-                </xsl:when>
-                <xsl:when test="local-name()='name'">
-                  <xsl:call-template name=""
-                </xsl:when>
-                <xsl:otherwise>
-                  <xsl:value-of select="normalize-space(text())"/>
-                </xsl:otherwise>
-              </xsl:choose>
-            </xsl:variable>
+            <xsl:apply-templates select="." mode="subject_content"/>
             <xsl:if test="position()!=last()">
               <xsl:text>--</xsl:text>
             </xsl:if>
