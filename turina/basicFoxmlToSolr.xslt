@@ -95,13 +95,12 @@ PREFIX ip: &lt;info:islandora/islandora-system:def/pageinfo#&gt;
 SELECT ?thumbnail ?thumbnail_obj
 FROM &lt;#ri&gt;
 WHERE {
-  ?thumbnail_obj ip:isPageOf ?this ;
+  ?thumbnail_obj ip:isPageOf &lt;info:fedora/<xsl:value-of select="$pid"/>&gt; ;
                  fm:state fm:Active ;
                  fv:disseminates ?thumbnail .
   ?thumbnail fv:disseminationType &lt;info:fedora/*/TN&gt; ;
-       fm:state fm:Active .
-  ?this fm:state fm:Active
-  FILTER(sameTerm(?this, &lt;info:fedora/<xsl:value-of select="$pid"/>&gt;)) .
+             fm:state fm:Active .
+  &lt;info:fedora/<xsl:value-of select="$pid"/>&gt; fm:state fm:Active .
 }
         </xsl:with-param>
         <xsl:with-param name='lang'>sparql</xsl:with-param>
@@ -216,9 +215,35 @@ WHERE {
       </field>
     </xsl:if>
   </xsl:template>
-  
 
-  
+  <xsl:template name="strip_end">
+    <xsl:param name="to_strip">.</xsl:param>
+    <xsl:param name="text"/>
+
+    <xsl:variable name="to_strip_length" select="string-length($to_strip)"/>
+    <xsl:variable name="length" select="string-length($text)"/>
+    <xsl:variable name="end" select="$length - $to_strip_length"/>
+    <xsl:choose>
+      <xsl:when test="$end > 0 and substring($text, $end + 1)=$to_strip">
+        <xsl:call-template name="strip_end">
+          <xsl:with-param name="to_strip" select="$to_strip"/>
+          <xsl:with-param name="text" select="substring($text, 1, $end)"/>
+        </xsl:call-template>
+      </xsl:when>
+      <xsl:otherwise>
+         <!--XXX:  Debug stuff, get rid of at some point...
+         <xsl:message>
+To strip:<xsl:value-of select="$to_strip"/>
+End position:<xsl:value-of select="$end"/>
+Text:<xsl:value-of select="$text"/>
+Subbed:<xsl:value-of select="substring($text, $end + 1)"/>
+To strip length:<xsl:value-of select="$to_strip_length"/>
+         </xsl:message>-->
+         <xsl:value-of select="$text"/>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
+
   <xsl:template match="mods:mods" mode="turina">
     <field name="turina_type_s">
       <xsl:choose>
@@ -226,13 +251,27 @@ WHERE {
         <xsl:when test="starts-with(normalize-space(mods:location/mods:shelfLocation/text()), 'LJT-Pre-')">Prensa</xsl:when>
         <xsl:when test="starts-with(normalize-space(mods:location/mods:shelfLocation/text()), 'LJT-M')">Manuscrito</xsl:when>
         <xsl:when test="starts-with(normalize-space(mods:location/mods:shelfLocation/text()), 'LJT-Cor')">Correspondencia</xsl:when>
-        <xsl:when test="starts-with(normalize-space(mods:genre[@authority='Joaquín_Turina']/text()), 'Programa')">Programa de Mano</xsl:when>
-        <xsl:when test="starts-with(normalize-space(mods:genre[@authority='Joaquín_Turina']/text()), 'Tarjeta Postal') or 
-          starts-with(normalize-space(mods:genre[@authority='Joaquín_Turina']/text()), 'Fotografîa')">Archivo Fotográfico</xsl:when>
-        <xsl:when test="starts-with(normalize-space(mods:genre[@authority='ingest']/text()), 'Diarios')">Diario</xsl:when>
+        <xsl:when test="mods:genre[@authority='Joaquín_Turina' and starts-with(normalize-space(text()), 'Programa')]">Programa de Mano</xsl:when>
+        <xsl:when test="mods:genre[@authority='Joaquín_Turina'][starts-with(normalize-space(text()), 'Tarjeta Postal') or 
+          starts-with(normalize-space(text()), 'Fotograf')]">Archivo Fotográfico</xsl:when>
+        <xsl:when test="mods:genre[@authority='ingest' and starts-with(normalize-space(text()), 'Diarios')]">Diario</xsl:when>
         <xsl:otherwise>Unknown types</xsl:otherwise>
       </xsl:choose>
     </field>
+    <xsl:for-each select="mods:genre">
+      <xsl:variable name="temp_text">
+        <xsl:call-template name="strip_end">
+          <xsl:with-param name="to_strip">.</xsl:with-param>
+          <xsl:with-param name="text" select="normalize-space(text())"/>
+        </xsl:call-template>
+      </xsl:variable>
+      <xsl:variable name="text_value" select="normalize-space($temp_text)"/>
+      <xsl:if test="$text_value">
+        <field name="turina_cleaned_genre_ms">
+          <xsl:value-of select="$text_value"/>
+        </field>
+      </xsl:if>
+    </xsl:for-each>
   </xsl:template>
   
   <xsl:template match="rdf:RDF">

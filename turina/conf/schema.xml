@@ -189,7 +189,14 @@
         <filter class="solr.RemoveDuplicatesTokenFilterFactory"/>
       </analyzer>
     </fieldType>
-    
+
+    <fieldType name="mappedKeyword" class="solr.TextField">
+      <analyzer>
+        <charFilter class="solr.MappingCharFilterFactory" mapping="mapping-ISOLatin1Accent.txt"/>
+        <tokenizer class="solr.KeywordTokenizerFactory"/>
+      </analyzer>
+    </fieldType>
+ 
     <fieldType name="mappedLowerText" class="solr.TextField">
       <analyzer>
         <charFilter class="solr.MappingCharFilterFactory" mapping="mapping-ISOLatin1Accent.txt"/>
@@ -319,6 +326,7 @@
    <dynamicField name="*_t"  type="text"    indexed="true"  stored="true"/>
    <dynamicField name="*_mt" type="mappedSnowballedText" indexed="true" stored="true" multiValued="true"/>
    <dynamicField name="*_mts" type="mappedSnowballedText" indexed="true" stored="true" multiValued='false'/>
+   <dynamicField name="*_mmk" type="mappedKeyword" indexed="true" stored="true" multiValued="true"/>
    <dynamicField name="*_b"  type="boolean" indexed="true"  stored="true"/>
    <dynamicField name="*_f"  type="sfloat"  indexed="true"  stored="true"/>
    <dynamicField name="*_d"  type="sdouble" indexed="true"  stored="true"/>
@@ -352,12 +360,12 @@
  <copyField source="*_s" dest="*_ms"/>
  <copyField source="*_s" dest="*_mts"/>
  <copyField source="*_s" dest="*_mlt"/>
+ <copyField source="*_s" dest="*_mmk"/>
  <copyField source="*_es" dest="*_et"/>
  <copyField source="*_es" dest="*_mlt"/>
  <copyField source="*_et" dest="*_ms"/>
  <copyField source="*_ms" dest="*_mt"/>
- <copyField source="atm_concert_*" dest="mapped_text"/>
- 
+ <copyField source="*_ms" dest="*_mmk"/>
 
  <!-- Similarity is the scoring routine for each document vs. a query.
       A custom similarity may be specified here, but the default is fine
