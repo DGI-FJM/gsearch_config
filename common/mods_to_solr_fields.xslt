@@ -512,8 +512,8 @@
     </field>
   </xsl:template>
   
-  <xsl:template match="mods:dateIssued | mods:dateCreated | mods:dateCaptured
-  | mods:dateValid | mods:dateModified | mods:copyrightDate | mods:dateOther">
+  <xsl:template match="mods:dateIssued[1] | mods:dateCreated[1] | mods:dateCaptured[1]
+  | mods:dateValid[1] | mods:dateModified[1] | mods:copyrightDate[1] | mods:dateOther[1]">
     <xsl:param name="prefix">mods_</xsl:param>
     <xsl:param name="suffix">_ms</xsl:param>
     
@@ -525,24 +525,38 @@
         </xsl:attribute>
         <xsl:value-of select="$text_value"/>
       </field>
-      <xsl:if test="position()=1"><!-- use the first for a sortable field -->
+      <field>
+        <xsl:attribute name="name">
+          <xsl:value-of select="concat($prefix, local-name(), '_s')"/>
+        </xsl:attribute>
+        <xsl:value-of select="$text_value"/>
+      </field>
+      <xsl:if test="@encoding='iso8601'">
         <field>
           <xsl:attribute name="name">
-            <xsl:value-of select="concat($prefix, local-name(), '_s')"/>
+            <xsl:value-of select="concat($prefix, local-name(), '_dt')"/>
           </xsl:attribute>
           <xsl:value-of select="$text_value"/>
         </field>
-        <xsl:if test="@encoding='iso8601'">
-          <field>
-            <xsl:attribute name="name">
-              <xsl:value-of select="concat($prefix, local-name(), '_dt')"/>
-            </xsl:attribute>
-            <xsl:value-of select="$text_value"/>
-          </field>
-        </xsl:if>
       </xsl:if>
     </xsl:if>
   </xsl:template>
-  
+ 
+  <xsl:template match="mods:dateIssued | mods:dateCreated | mods:dateCaptured
+  | mods:dateValid | mods:dateModified | mods:copyrightDate | mods:dateOther">
+    <xsl:param name="prefix">mods_</xsl:param>
+    <xsl:param name="suffix">_ms</xsl:param>
+
+    <xsl:variable name="text_value" select="normalize-space(text())"/>
+    <xsl:if test="$text_value">
+      <field>
+        <xsl:attribute name="name">
+          <xsl:value-of select="concat($prefix, local-name(), $suffix)"/>
+        </xsl:attribute>
+        <xsl:value-of select="$text_value"/>
+      </field>
+    </xsl:if>
+  </xsl:template>
+ 
   <xsl:template match="text()"/>
 </xsl:stylesheet>
