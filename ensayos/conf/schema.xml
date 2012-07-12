@@ -333,6 +333,7 @@
         <field name="dc.subject" type="text" indexed="true" stored="true" multiValued="true"/>
         <field name="dc.description" type="text" indexed="true" stored="true" multiValued="true"/>
         <field name="dc.creator" type="text" indexed="true" stored="true" multiValued="true"/>
+		<field name="dc.relation" type="text" indexed="true" stored="true" multiValued="true"/>
       
         <field name="refworks.a1" type="text" indexed="true" stored="true" multiValued="true"/>
         <field name="refworks.u2" type="text" indexed="true" stored="true" multiValued="true"/>

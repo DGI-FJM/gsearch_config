@@ -158,6 +158,16 @@
            <!-- <xsl:value-of select="islandora-exts:getDatastreamTextRaw($PID, $REPOSITORYNAME, 'OCR', $FEDORASOAP, $FEDORAUSER, $FEDORAPASS, $TRUSTSTOREPATH, $TRUSTSTOREPASS)"/> -->
      	</field>
     </xsl:for-each>
+	
+	<!-- PDF Size -->
+	
+	<xsl:variable name="pdf_size" select="foxml:datastream[@ID='OBJ']/foxml:datastreamVersion[last()]/@SIZE"/>
+	<xsl:if test="$pdf_size">
+	<field name="pdf_size_s">
+	 	<xsl:value-of select="$pdf_size"/>
+	 	</field>
+	</xsl:if>
+
 
           <!-- Names and Roles -->
     <xsl:apply-templates select="foxml:datastream[@ID='MODS']/foxml:datastreamVersion[last()]/foxml:xmlContent//mods:mods" mode="default"/>
