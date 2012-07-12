@@ -413,7 +413,7 @@
     mods:end | mods:total | mods:list | mods:date | mods:text | mods:form |
     mods:reformattingQuality | mods:internetMediaType | mods:extent |
     mods:digitalOrigin | mods:publisher | mods:edition |
-    mods:language/mods:languageTerm | mods:issuance">
+    mods:language/mods:languageTerm | mods:issuance | mods:tableOfContents">
     <xsl:param name="prefix">mods_</xsl:param>
     <xsl:param name="suffix">_ms</xsl:param>
     
