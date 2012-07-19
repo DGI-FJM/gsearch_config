@@ -5,7 +5,7 @@
     there could be problems...  Might make a script (run via cron) to check if the 
     label is correct, and index if it is not? -->
     
-<xsl:stylesheet version="2.0"
+<xsl:stylesheet version="1.0"
         xmlns:xsl="http://www.w3.org/1999/XSL/Transform"   
         xmlns:foxml="info:fedora/fedora-system:def/foxml#"
         xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -16,9 +16,11 @@
         xmlns:xalan="http://xml.apache.org/xalan"
         xmlns:set="http://exslt.org/sets"
         xmlns:exts="xalan://dk.defxws.fedoragsearch.server.GenericOperationsImpl"
-            exclude-result-prefixes="exts m rdf res fds ns xalan set">
+        xmlns:fedora-rels-ext="info:fedora/fedora-system:def/relations-external#"
+        xmlns:encoder="xalan://java.net.URLEncoder"
+        xmlns:eac-cpf="urn:isbn:1-931666-33-4"
+            exclude-result-prefixes="exts m rdf res fds ns xalan set encoder eac-cpf">
     <xsl:output method="xml" indent="yes" encoding="UTF-8"/>
-    <xsl:include href="file:/var/www/html/drupal/sites/all/modules/islandora_fjm/xsl/url_util.xslt"/>
     
     <!-- FIXME:  Should probably get these as parameters, or sommat -->
     <xsl:param name="HOST" select="'localhost'"/>
@@ -103,10 +105,132 @@
         </xsl:if>
     </xsl:template>
     
+    <!--  get the naem of the cycle for the current concert -->
+    <xsl:template match="rdf:Description" mode="atm_concert">
+      <xsl:variable name="cycle_pid" select="fedora-rels-ext:isMemberOf/@rdf:resource"/>
+      <xsl:if test="$cycle_pid">
+        <xsl:variable name="cycle_dc" select="document(concat($PROT, '://', $FEDORAUSERNAME, ':', $FEDORAPASSWORD, '@',
+                    $HOST, ':', $PORT, '/fedora/objects/', substring-after($cycle_pid, '/'), '/datastreams/DC/content'))"/>
+        <xsl:variable name="cycle_title" select="normalize-space($cycle_dc/oai_dc:dc/dc:title/text())"
+          xmlns:oai_dc="http://www.openarchives.org/OAI/2.0/oai_dc/"
+          xmlns:dc="http://purl.org/dc/elements/1.1/"/>
+        <xsl:if test='$cycle_title'>
+          <field name="atm_concert_cycle_s"><xsl:value-of select="$cycle_title"/></field>
+          <field name="atm_facet_concert_cycle_s"><xsl:value-of select="$cycle_title"/></field>
+        </xsl:if>
+      </xsl:if>
+    </xsl:template>
+    
+    <!--  get the date of the concert, and delegate others -->
+    <xsl:template match="m:mods" mode="atm_concert">
+      <xsl:param name="pid"/>
+      
+      <xsl:variable name="temp_titn">
+        <xsl:choose>
+          <xsl:when test="m:identifier[@type='titn']">
+           <xsl:value-of select="normalize-space(m:identifier[@type='titn']/text())"/>
+          </xsl:when>
+          <xsl:otherwise>
+            <xsl:variable name="C_CUSTOM" select="document(concat($PROT, '://', $FEDORAUSERNAME, ':', $FEDORAPASSWORD, '@', $HOST, ':', $PORT, '/fedora/objects/', $pid, '/datastreams/CustomXML/content'))"/>
+            <xsl:value-of select="normalize-space($C_CUSTOM/Concierto/programa/titn_programa/text())"/>
+          </xsl:otherwise>
+        </xsl:choose>
+      </xsl:variable>
+      
+      <xsl:variable name="date">
+        <xsl:call-template name="get_concert_date">
+          <xsl:with-param name="concert_pid" select="$pid"/>
+          <xsl:with-param name="mods" select="current()"/>
+        </xsl:call-template>
+      </xsl:variable>
+      
+      <xsl:if test="$date">
+        <field name="atm_concert_date_dt"><xsl:value-of select="$date"/></field>
+        <field name="atm_concert_year_s"><xsl:value-of select="substring($date, 1, 4)"/></field>
+        <field name="atm_facet_year_s"><xsl:value-of select="substring($date, 1, 4)"/></field>
+      </xsl:if>
+        
+      <xsl:if test="$temp_titn">
+        <field name="atm_concert_program_titn_s"><xsl:value-of select="$temp_titn"/></field>
+      </xsl:if>
+
+      <xsl:apply-templates mode="atm_concert"/>
+    </xsl:template>
+    
+    <xsl:template name="get_ISO8601_date" xmlns:java="http://xml.apache.org/xalan/java">
+      <xsl:param name="date"/>
+      
+      <!--  XXX: need to add the joda jar to the lib directory to make work? -->
+      <xsl:variable name="dp" select="java:org.joda.time.format.ISODateTimeFormat.dateTimeParser()"/>
+      <xsl:variable name="parsed" select="java:parseDateTime($dp, $date)"/>
+      
+      <xsl:variable name="f" select="java:org.joda.time.format.ISODateTimeFormat.dateTime()"/>
+      <xsl:variable name="df" select="java:withZoneUTC($f)"/>
+      <xsl:value-of select="java:print($df, $parsed)"/>
+    </xsl:template>
+    
+    <xsl:template name="get_concert_date">
+      <xsl:param name="concert_pid"/>
+      <xsl:param name="mods" select="document(concat($PROT, '://', $FEDORAUSERNAME, ':', $FEDORAPASSWORD, '@', $HOST, ':', $PORT, '/fedora/objects/', $concert_pid, '/datastreams/MODS/content'))//m:mods"/>
+      
+      <xsl:variable name="temp_date">
+        <xsl:choose>
+          <xsl:when test="$mods/m:originInfo/m:dateCreated[@encoding='iso8601']">
+            <xsl:value-of select="normalize-space($mods/m:originInfo/m:dateCreated[@encoding='iso8601']/text())"/>
+          </xsl:when>
+          <xsl:otherwise>
+              <xsl:variable name="C_CUSTOM" select="document(concat($PROT, '://', $FEDORAUSERNAME, ':', $FEDORAPASSWORD, '@', $HOST, ':', $PORT, '/fedora/objects/', $concert_pid, '/datastreams/CustomXML/content'))"/>
+              <!-- FIXME:  The date should be in MODS (and/or somewhere else (DC?), and obtained from there), so the original XML need not be stored...
+                  Also, the whole "concat(..., 'Z')" seems a little flimsy-->
+              <xsl:value-of select="normalize-space($C_CUSTOM/Concierto/FECHA/text())"/>
+          </xsl:otherwise>
+        </xsl:choose>
+      </xsl:variable>
+      
+      <xsl:if test="normalize-space($temp_date)">
+        <xsl:call-template name="get_ISO8601_date">
+          <xsl:with-param name="date" select="$temp_date"/>
+        </xsl:call-template>
+      </xsl:if>
+    </xsl:template>
+    
+    <xsl:template name="mods_titleInfo">
+      <xsl:param name="node"/>
+      <xsl:param name="nonSort" select="normalize-space($node/m:nonSort/text())"/>
+      <xsl:param name="title" select="normalize-space($node/m:title/text())"/>
+      <xsl:param name="subTitle" select="normalize-space($node/m:subTitle/text())"/>
+      
+      <xsl:if test="$nonSort">
+        <xsl:value-of select="$nonSort"/>
+        <xsl:text> </xsl:text>
+      </xsl:if>
+      <xsl:value-of select="$title"/>
+      <xsl:if test="$subTitle">
+        <xsl:text>: </xsl:text>
+        <xsl:value-of select="$subTitle"/>
+      </xsl:if>
+    </xsl:template>
+    
+    <!-- build the title for the current concert from MODS titleInfo -->
+    <xsl:template match="m:titleInfo" mode="atm_concert">
+      <xsl:variable name="title">
+        <xsl:call-template name="mods_titleInfo">
+          <xsl:with-param name="node" select="current()"/>
+        </xsl:call-template>
+      </xsl:variable>
+      
+      <field name="atm_concert_title_s"><xsl:value-of select="normalize-space($title)"/></field>
+    </xsl:template>
+    
+    <xsl:template match="m:abstract" mode="atm_concert">
+      <field name="atm_concert_description_s"><xsl:value-of select="normalize-space(text())"/></field>
+    </xsl:template>
+    
+    <xsl:template match="* | text()" mode="atm_concert"/>
+    
     <xsl:template name="atm_concert">
         <xsl:param name="pid" select="no_pid"/>
         
-        <xsl:variable name="C_CUSTOM" select="document(concat($PROT, '://', $FEDORAUSERNAME, ':', $FEDORAPASSWORD, '@', $HOST, ':', $PORT, '/fedora/objects/', $pid, '/datastreams/CustomXML/content'))"/>
         <doc>
             <field name="PID">
                 <xsl:value-of select="$pid"/>
@@ -116,7 +240,14 @@
             <xsl:call-template name="rels_ext">
                 <xsl:with-param name="pid" select="$pid"/>
             </xsl:call-template>
-        
+            
+            <xsl:apply-templates mode="atm_concert" select="document(concat($PROT, '://', encoder:encode($FEDORAUSERNAME), ':', encoder:encode($FEDORAPASSWORD), '@', $HOST, ':', $PORT, '/fedora/objects/', $pid, '/datastreams/MODS/content'))//m:mods">
+              <xsl:with-param name="pid" select="$pid"/>
+            </xsl:apply-templates>
+            <xsl:apply-templates mode="atm_concert" select="document(concat($PROT, '://', encoder:encode($FEDORAUSERNAME), ':',  encoder:encode($FEDORAPASSWORD), '@', $HOST, ':', $PORT, '/fedora/objects/', $pid, '/datastreams/RELS-EXT/content'))//rdf:Description[@rdf:about=concat('info:fedora/', $pid)]">
+              <xsl:with-param name="pid" select="$pid"/>
+            </xsl:apply-templates>
+            
             <!-- FIXME:  This depends on having a program... -->
             <xsl:variable name="SCORE_QUERY_TF">
                 <xsl:call-template name="perform_query">
@@ -158,36 +289,6 @@
                 </xsl:call-template>
             </xsl:variable>
             <xsl:variable name="SCORES" select="xalan:nodeset($SCORE_QUERY_TF)/res:sparql/res:results"/>
-            
-            <field name="atm_concert_title_s">
-                <xsl:value-of select="normalize-space($SCORES/res:result[1]/res:concertTitle/text())"/>
-            </field>
-            <field name="atm_concert_cycle_s">
-                <xsl:value-of select="normalize-space($SCORES/res:result[1]/res:cycleName/text())"/>
-            </field>
-            <!-- Don't really think that this is necessary:
-            <field name="atm_facet_concert_title_s">
-                <xsl:value-of select="normalize-space($SCORES/res:result[1]/res:concertTitle/text())"/>
-            </field>-->
-            <field name="atm_facet_concert_cycle_s">
-                <xsl:value-of select="normalize-space($SCORES/res:result[1]/res:cycleName/text())"/>
-            </field>
-            <field name="atm_concert_description_s">
-                <xsl:value-of select="normalize-space($SCORES/res:result[1]/res:concertDesc/text())"/>
-            </field>
-        
-            <!-- FIXME:  The date should be in MODS (and or somewhere else (DC?), and obtained from there), so the original XML need not be stored...
-                Also, the whole "concat(..., 'Z')" seems a little flimsy-->
-            <xsl:variable name="date" select="normalize-space(concat($C_CUSTOM/Concierto/FECHA/text(), 'Z'))"/>
-            <field name="atm_concert_date_dt">
-                <xsl:value-of select="$date"/>
-            </field>
-            <field name="atm_concert_year_s">
-                <xsl:value-of select="substring($date, 1, 4)"/>
-            </field>
-            <field name="atm_facet_year_s">
-                <xsl:value-of select="substring($date, 1, 4)"/>
-            </field>
                         
             <xsl:variable name="LECT_TF">
                 <xsl:call-template name="perform_query">
@@ -275,10 +376,6 @@
                     <xsl:otherwise>false</xsl:otherwise>
                 </xsl:choose>
             </field>
-            
-            <field name="atm_concert_program_titn_s">
-                <xsl:value-of select="normalize-space($C_CUSTOM/Concierto/programa/titn_programa/text())"/>
-            </field>
         
             <xsl:for-each select="$SCORES/res:result[res:thumbnail[@uri]][1]">
                 <field name="atm_concert_iconpid_s">
@@ -365,8 +462,6 @@
         </xsl:variable>
         <xsl:variable name="MOVEMENTS" select="xalan:nodeset($MOVEMENT_TF)"/>
 
-        <xsl:variable name="C_CUSTOM" select="document(concat($PROT, '://', $FEDORAUSERNAME, ':', $FEDORAPASSWORD, '@',
-                $HOST, ':', $PORT, '/fedora/objects/', substring-after($SCORES/res:concert/@uri, '/'), '/datastreams/CustomXML/content'))"/>
         <xsl:if test="$SCORES">            
             <doc>
                 <field name="PID">
@@ -414,21 +509,30 @@
                     <xsl:value-of select="normalize-space($SCORES/res:cycleName/text())"/>
                     <!--<xsl:value-of select="normalize-space($C_MODS/m:modsCollection/m:mods/m:name[@type='conference']/m:namePart/text())"/>-->
                 </field>
-                <xsl:variable name="date" select="normalize-space(concat($C_CUSTOM/Concierto/FECHA/text(), 'Z'))"/>
-                <xsl:variable name="year" select="substring($date, 1, 4)"/>
-                <field name="atm_facet_concert_date_dt">
-                    <xsl:value-of select="$date"/>
-                </field>
-                <field name="atm_facet_year_s">
-                    <xsl:value-of select="$year"/>
-                </field>
-                <!-- TODO (minor): Determine if these other date fields are really necessary... -->
-                <field name="atm_performance_concert_date_dt">
-                    <xsl:value-of select="$date"/>
-                </field>
-                <field name="atm_performance_year_s">
-                    <xsl:value-of select="$year"/>
-                </field>
+
+                <xsl:variable name="date">
+                  <xsl:call-template name="get_concert_date">
+                    <xsl:with-param name="concert_pid" select="substring-after($SCORES/res:concert/@uri, '/')"/>
+                  </xsl:call-template>
+                </xsl:variable>
+                
+                <xsl:if test="$date">
+                  <xsl:variable name="year" select="substring($date, 1, 4)"/>
+                  <field name="atm_facet_concert_date_dt">
+                      <xsl:value-of select="$date"/>
+                  </field>
+                  <field name="atm_facet_year_s">
+                      <xsl:value-of select="$year"/>
+                  </field>
+                  <!-- TODO (minor): Determine if these other date fields are really necessary... -->
+                  <field name="atm_performance_concert_date_dt">
+                      <xsl:value-of select="$date"/>
+                  </field>
+                  <field name="atm_performance_year_s">
+                      <xsl:value-of select="$year"/>
+                  </field>
+                </xsl:if>
+                
                 <field name="atm_performance_composer_name_s">
                     <xsl:value-of select="normalize-space($SCORES/res:composerName/text())"/>
                 </field>
@@ -627,7 +731,7 @@
             
             <field name="atm_type_s">Partituras</field>
             
-            <field name="atm_score_composer_s">
+            <field name="atm_score_composer_es">
                 <xsl:value-of select="normalize-space($SCORE_RESULT/res:composerName/text())"/>
             </field>
             <field name="atm_facet_composer_s">
@@ -636,7 +740,7 @@
             <field name="atm_score_composer_pid_s">
                 <xsl:value-of select="substring-after($SCORE_RESULT/res:composer/@uri, '/')"/>
             </field>
-            <field name="atm_score_title_s">
+            <field name="atm_score_title_es">
                 <xsl:value-of select="normalize-space($SCORE_RESULT/res:title/text())"/>
             </field>
             <field name="atm_score_titn_s">
@@ -774,8 +878,11 @@
                 </field>
             </xsl:if>
             
-            <xsl:variable name="C_CUSTOM" select="document(concat($PROT, '://', $FEDORAUSERNAME, ':', $FEDORAPASSWORD, '@', $HOST, ':', $PORT, '/fedora/objects/', substring-after($CONCERT_INFO/res:result[1]/res:concert/@uri, '/'), '/datastreams/CustomXML/content'))"/>
-            <xsl:variable name="date" select="normalize-space(concat($C_CUSTOM/Concierto/FECHA/text(), 'Z'))"/>
+            <xsl:variable name="date">
+              <xsl:call-template name="get_concert_date">
+                <xsl:with-param name="concert_pid" select="substring-after($CONCERT_INFO/res:result[1]/res:concert/@uri, '/')"/>
+              </xsl:call-template>
+            </xsl:variable>
             <field name="atm_program_date_dt">
                 <xsl:value-of select="$date"/>
             </field>
@@ -842,7 +949,6 @@
                 </xsl:call-template>
             </xsl:variable>
             <xsl:variable name="LECT" select="xalan:nodeset($LECT_TF)/res:sparql/res:results"/>
-            <xsl:variable name="C_CUSTOM" select="document(concat($PROT, '://', $FEDORAUSERNAME, ':', $FEDORAPASSWORD, '@', $HOST, ':', $PORT, '/fedora/objects/', substring-after($LECT/res:result[1]/res:concert/@uri, '/'), '/datastreams/CustomXML/content'))"/>
             <xsl:for-each select="$LECT/res:result[1]">
                 <field name="atm_type_s">Archivo de voz</field>
                 <field name="atm_lecture_title_s">
@@ -860,7 +966,11 @@
                 <field name="atm_facet_concert_cycle_s">
                     <xsl:value-of select="normalize-space(res:concertCycle/text())"/>
                 </field>
-                <xsl:variable name="date" select="normalize-space(concat($C_CUSTOM/Concierto/FECHA/text(), 'Z'))"/>
+                <xsl:variable name="date">
+                  <xsl:call-template name="get_concert_date">
+                    <xsl:with-param name="concert_pid" select="substring-after($LECT/res:result[1]/res:concert/@uri, '/')"/>
+                  </xsl:call-template>
+                </xsl:variable>
                 <field name="atm_facet_concert_date_dt">
                     <xsl:value-of select="$date"/>
                 </field>
@@ -984,9 +1094,8 @@
                 </xsl:call-template>
             </xsl:for-each>
             
-            <xsl:call-template name="eac_cpf">
-                <xsl:with-param name="pid" select="$pid"/>
-            </xsl:call-template>
+            <xsl:apply-templates select="document(concat($PROT, '://', $FEDORAUSERNAME, ':', $FEDORAPASSWORD, '@',
+            $HOST, ':', $PORT, '/fedora/objects/', $pid, '/datastreams/', 'EAC-CPF', '/content'))/*"/>
             
             <xsl:call-template name="rels_ext">
                 <xsl:with-param name="pid" select="$pid"/>
@@ -1048,9 +1157,8 @@
                     </field>
                 </xsl:if>
                 
-                <xsl:call-template name="eac_cpf">
-                  <xsl:with-param name="pid" select="$pid"/>
-                </xsl:call-template>
+                <xsl:apply-templates select="document(concat($PROT, '://', $FEDORAUSERNAME, ':', $FEDORAPASSWORD, '@',
+            $HOST, ':', $PORT, '/fedora/objects/', $pid, '/datastreams/', 'EAC-CPF', '/content'))/*"/>
                 
                 <!-- Get a list of the concerts in which this person has played -->
                 <xsl:variable name="PERFORMER_GROUP_TF">
@@ -1234,9 +1342,8 @@
                 </xsl:call-template>
                 
                 <!-- Not really needed, but it'll allow them to sort nicely... (Used in A-Z selector)  Blargh. -->
-                <xsl:call-template name="eac_cpf">
-                    <xsl:with-param name="pid" select="substring-after(res:person/@uri, '/')"/>
-                </xsl:call-template>
+                <xsl:apply-templates select="document(concat($PROT, '://', $FEDORAUSERNAME, ':', $FEDORAPASSWORD, '@',
+            $HOST, ':', $PORT, '/fedora/objects/', substring-after(res:person/@uri, '/'), '/datastreams/', 'EAC-CPF', '/content'))/*"/>
             </doc>
             
             <xsl:call-template name="atm_person">
@@ -1416,61 +1523,108 @@
         </xsl:choose>
     </xsl:template>
     
-    <xsl:template name="eac_cpf">
-        <xsl:param name="pid"/>
-        <xsl:param name="dsid" select="'EAC-CPF'"/>
-        <xsl:param name="prefix" select="'eaccpf_'"/>
-        <xsl:param name="suffix" select="'_es'"/> <!-- 'edged' (edge n-gram) string (copied to *_et text)
+    <xsl:template match="eac-cpf:nameEntry[@localType='primary']">
+      <xsl:param name="prefix"/>
+      <xsl:param name="suffix"/>
+      
+      <xsl:for-each select="eac-cpf:part[@localType]">
+          <field>
+              <xsl:attribute name="name">
+                  <xsl:value-of select="concat($prefix, 'name_', @localType, $suffix)"/>
+              </xsl:attribute>
+              <xsl:value-of select="text()"/>
+          </field>
+      </xsl:for-each>
+      
+      <field>
+        <xsl:attribute name="name">
+            <xsl:value-of select="concat($prefix, 'complete', $suffix)"/>
+        </xsl:attribute>
+        <xsl:value-of select="normalize-space(concat(eac-cpf:part[@localType='surname']/text(), ', ', eac-cpf:part[@localType='forename']/text()))"/>
+      </field>
+    </xsl:template>
+    
+    <xsl:template match="eac-cpf:addressLine">
+      <xsl:param name="prefix"/>
+      <xsl:param name="suffix"/>
+      
+      <field>
+          <xsl:attribute name="name">
+              <xsl:value-of select="concat($prefix, 'address_', @localType, $suffix)"/>
+          </xsl:attribute>
+          <xsl:value-of select="text()"/>
+      </field>
+    </xsl:template>
+    
+    <xsl:template match="eac-cpf:eac-cpf">
+      <xsl:param name="prefix">eaccpf_</xsl:param>
+      <xsl:param name="suffix">_es</xsl:param> <!-- 'edged' (edge n-gram) string (copied to *_et text)
             NOTE: As of writing this 2011/10/03 (about noon), *_es is single-valued, to allow sorting...  This'll
             explode if there are multiple values for a single field, though... Might be a good idea to select based on 
             distinct localTypes, and effectively merge them into a single field?-->
-
-        <xsl:variable name="EAC_CPF" select="document(concat($PROT, '://', $FEDORAUSERNAME, ':', $FEDORAPASSWORD, '@',
-            $HOST, ':', $PORT, '/fedora/objects/', $pid, '/datastreams/', $dsid, '/content'))"/>
-        
-        <xsl:variable name="cpfDesc" select="$EAC_CPF/eac-cpf/cpfDescription"/>
-        <xsl:variable name="nameEntry" select="$cpfDesc/identity/nameEntry[@localType='primary']"/>
-        
-        <xsl:for-each select="$nameEntry/part[@localType]">
-            <field>
-                <xsl:attribute name="name">
-                    <xsl:value-of select="concat($prefix, 'name_', @localType, $suffix)"/>
-                </xsl:attribute>
-                <xsl:value-of select="text()"/>
-            </field>
-        </xsl:for-each>
-        
-        <xsl:for-each select="$cpfDesc/description//place[@localType='primary']/address/addressLine[@localType]">
-            <field>
-                <xsl:attribute name="name">
-                    <xsl:value-of select="concat($prefix, 'address_', @localType, $suffix)"/>
-                </xsl:attribute>
-                <xsl:value-of select="text()"/>
-            </field>
-        </xsl:for-each>
-        
-        <field>
-            <xsl:attribute name="name">
-                <xsl:value-of select="concat($prefix, 'complete', $suffix)"/>
-            </xsl:attribute>
-            <xsl:value-of select="normalize-space(concat($nameEntry/part[@localType='surname']/text(), ', ', $nameEntry/part[@localType='forename']/text()))"/>
-        </field>
+      <xsl:apply-templates select="eac-cpf:cpfDescription/eac-cpf:description//eac-cpf:place[@localType='primary']/eac-cpf:address/eac-cpf:addressLine[@localType] |
+          eac-cpf:cpfDescription/eac-cpf:identity/eac-cpf:nameEntry[@localType='primary']">
+        <xsl:with-param name="prefix" select="$prefix"/>
+        <xsl:with-param name="suffix" select="$suffix"/>
+      </xsl:apply-templates>
+    </xsl:template>
+    
+    <xsl:template match="nameEntry[@localType='primary']">
+      <xsl:param name="prefix"/>
+      <xsl:param name="suffix"/>
+      
+      <xsl:for-each select="part[@localType]">
+          <field>
+              <xsl:attribute name="name">
+                  <xsl:value-of select="concat($prefix, 'name_', @localType, $suffix)"/>
+              </xsl:attribute>
+              <xsl:value-of select="text()"/>
+          </field>
+      </xsl:for-each>
+      
+      <field>
+        <xsl:attribute name="name">
+            <xsl:value-of select="concat($prefix, 'complete', $suffix)"/>
+        </xsl:attribute>
+        <xsl:value-of select="normalize-space(concat(part[@localType='surname']/text(), ', ', part[@localType='forename']/text()))"/>
+      </field>
+    </xsl:template>
+    
+    <xsl:template match="addressLine">
+      <xsl:param name="prefix"/>
+      <xsl:param name="suffix"/>
+      
+      <field>
+          <xsl:attribute name="name">
+              <xsl:value-of select="concat($prefix, 'address_', @localType, $suffix)"/>
+          </xsl:attribute>
+          <xsl:value-of select="text()"/>
+      </field>
+    </xsl:template>
+    
+    <xsl:template match="eac-cpf">
+      <xsl:param name="prefix">eaccpf_</xsl:param>
+      <xsl:param name="suffix">_es</xsl:param> <!-- 'edged' (edge n-gram) string (copied to *_et text)
+            NOTE: As of writing this 2011/10/03 (about noon), *_es is single-valued, to allow sorting...  This'll
+            explode if there are multiple values for a single field, though... Might be a good idea to select based on 
+            distinct localTypes, and effectively merge them into a single field?-->
+      <xsl:apply-templates select="cpfDescription/description//place[@localType='primary']/address/addressLine[@localType] |
+          cpfDescription/identity/nameEntry[@localType='primary']">
+        <xsl:with-param name="prefix" select="$prefix"/>
+        <xsl:with-param name="suffix" select="$suffix"/>
+      </xsl:apply-templates>
     </xsl:template>
     
     <xsl:template name="perform_query">
-        <xsl:param name="query" select="no_query"/>
-        <xsl:param name="lang" select="'itql'"/>
-        <xsl:param name="additional_params" select="''"/>
+        <xsl:param name="query"/>
+        <xsl:param name="lang">itql</xsl:param>
+        <xsl:param name="additional_params"/>
         
-        <xsl:variable name="encoded_query">
-            <xsl:call-template name="url-encode">
-                <xsl:with-param name="str" select="normalize-space($query)"/>
-            </xsl:call-template>
-        </xsl:variable>
-        <xsl:for-each select="document(concat($RISEARCH, $encoded_query, '&amp;lang=', $lang,  $additional_params))">
-            <?xalan-doc-cache-off?>
-            <xsl:copy-of select="*"/>
-        </xsl:for-each>
+        <xsl:variable name="encoded_query" select="encoder:encode(normalize-space($query))"/>
+        
+        <xsl:variable name="query_url" select="concat($RISEARCH, $encoded_query, '&amp;lang=', $lang,  $additional_params)"/>
+        <?xalan-doc-cache-off?>
+        <xsl:copy-of select="document($query_url)"/>
         <!-- Doesn't work, as I input this into a variable...  Blargh
         <xsl:comment>
             <xsl:value-of select="$full_query"/>

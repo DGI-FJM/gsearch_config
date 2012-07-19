@@ -1,6 +1,7 @@
 <xsl:stylesheet version="1.0"
   xmlns:mods="http://www.loc.gov/mods/v3"
-  xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+  xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+  xmlns:java="http://xml.apache.org/xalan/java">
   <xsl:output method="xml" indent="yes" encoding="UTF-8"/>
   
   <!-- Basic MODS -->
@@ -134,10 +135,6 @@
       <xsl:if test="$sub_title">
         <xsl:text>: </xsl:text>
         <xsl:value-of select="$sub_title"/>
-      </xsl:if>
-      <xsl:if test="$non_sort">
-        <xsl:text>, </xsl:text>
-        <xsl:value-of select="$non_sort"/>
       </xsl:if>
     </xsl:if>
   </xsl:template>
@@ -532,11 +529,19 @@
         <xsl:value-of select="$text_value"/>
       </field>
       <xsl:if test="@encoding='iso8601'">
+        <!--  XXX: need to add the joda jar to the lib directory to make work? -->
+        <xsl:variable name="dp" select="java:org.joda.time.format.ISODateTimeFormat.dateTimeParser()"/>
+        <xsl:variable name="parsed" select="java:parseDateTime($dp, $text_value)"/>
+        
+        <xsl:variable name="f" select="java:org.joda.time.format.ISODateTimeFormat.dateTime()"/>
+        <xsl:variable name="df" select="java:withZoneUTC($f)"/>
+        <xsl:variable name="date" select="java:print($df, $parsed)"/>
+        
         <field>
           <xsl:attribute name="name">
             <xsl:value-of select="concat($prefix, local-name(), '_dt')"/>
           </xsl:attribute>
-          <xsl:value-of select="$text_value"/>
+          <xsl:value-of select="$date"/>
         </field>
       </xsl:if>
     </xsl:if>
