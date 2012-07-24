@@ -69,11 +69,11 @@
         <xsl:if test="not(foxml:digitalObject/foxml:datastream[@ID='METHODMAP' or @ID='DS-COMPOSITE-MODEL'])">
            <xsl:if test="starts-with($PID, 'jt')">
              <doc>
-               <xsl:apply-templates select="/foxml:digitalObject" mode="activeFedoraObject">
-                 <xsl:with-param name="PID" select="$PID"/>
-               </xsl:apply-templates>
                <xsl:apply-templates select="/foxml:digitalObject" mode="add-turina-thumbnail">
                  <xsl:with-param name="pid" select="$PID"/>
+               </xsl:apply-templates>
+               <xsl:apply-templates select="/foxml:digitalObject" mode="activeFedoraObject">
+                 <xsl:with-param name="PID" select="$PID"/>
                </xsl:apply-templates>
              </doc>
            </xsl:if>
@@ -135,17 +135,7 @@ WHERE {
       <xsl:with-param name="suffix">_ms</xsl:with-param>
     </xsl:apply-templates>
 
-    <!-- OCR -->
-    <xsl:for-each select="foxml:datastream[@ID='PDF']">
-      <field>
-        <xsl:attribute name="name">fulltext_mt</xsl:attribute>
-        <xsl:value-of select="exts:getDatastreamText($PID, $REPOSITORYNAME, @ID, $FEDORASOAP, $FEDORAUSER, $FEDORAPASS, $TRUSTSTOREPATH, $TRUSTSTOREPASS)"/>
-           <!-- <xsl:message><xsl:value-of select="exts:getDatastreamText($PID, $REPOSITORYNAME, @ID, $FEDORASOAP, $FEDORAUSER, $FEDORAPASS, $TRUSTSTOREPATH, $TRUSTSTOREPASS)"/></xsl:message>
-           <xsl:value-of select="islandora-exts:getDatastreamTextRaw($PID, $REPOSITORYNAME, 'OCR', $FEDORASOAP, $FEDORAUSER, $FEDORAPASS, $TRUSTSTOREPATH, $TRUSTSTOREPASS)"/> -->
-     	</field>
-    </xsl:for-each>
-
-      <!-- Names and Roles -->
+    <!-- Names and Roles -->
     <xsl:apply-templates select="foxml:datastream[@ID='MODS']/foxml:datastreamVersion[last()]/foxml:xmlContent//mods:mods" mode="default"/>
     <xsl:apply-templates select="foxml:datastream[@ID='MODS']/foxml:datastreamVersion[last()]/foxml:xmlContent//mods:mods" mode="turina"/>
     
@@ -172,6 +162,17 @@ WHERE {
           </xsl:otherwise>
         </xsl:choose>
     </xsl:for-each>
+
+    <!-- OCR -->
+    <xsl:for-each select="foxml:datastream[@ID='OCR']">
+      <field>
+        <xsl:attribute name="name">fulltext_mt</xsl:attribute>
+        <xsl:value-of select="exts:getDatastreamText($PID, $REPOSITORYNAME, @ID, $FEDORASOAP, $FEDORAUSER, $FEDORAPASS, $TRUSTSTOREPATH, $TRUSTSTOREPASS)"/>
+           <!-- <xsl:message><xsl:value-of select="exts:getDatastreamText($PID, $REPOSITORYNAME, @ID, $FEDORASOAP, $FEDORAUSER, $FEDORAPASS, $TRUSTSTOREPATH, $TRUSTSTOREPASS)"/></xsl:message>
+           <xsl:value-of select="islandora-exts:getDatastreamTextRaw($PID, $REPOSITORYNAME, 'OCR', $FEDORASOAP, $FEDORAUSER, $FEDORAPASS, $TRUSTSTOREPATH, $TRUSTSTOREPASS)"/> -->
+        </field>
+    </xsl:for-each>
+
   </xsl:template>
 
   <xsl:template match="/foxml:digitalObject" mode="inactiveFedoraObject">
@@ -258,6 +259,7 @@ To strip length:<xsl:value-of select="$to_strip_length"/>
         <xsl:otherwise>Unknown types</xsl:otherwise>
       </xsl:choose>
     </field>
+
     <xsl:for-each select="mods:genre">
       <xsl:variable name="temp_text">
         <xsl:call-template name="strip_end">
@@ -269,6 +271,25 @@ To strip length:<xsl:value-of select="$to_strip_length"/>
       <xsl:if test="$text_value">
         <field name="turina_cleaned_genre_ms">
           <xsl:value-of select="$text_value"/>
+        </field>
+      </xsl:if>
+    </xsl:for-each>
+
+    <xsl:for-each select="mods:name[@type='personal']">
+      <xsl:variable name="author_text">
+        <xsl:call-template name="name_parts_given_last">
+          <xsl:with-param name="node" select="current()"/>
+        </xsl:call-template>
+      </xsl:variable>
+      <xsl:variable name="role" select="normalize-space(mods:role/mods:roleTerm/text())"/>
+      <xsl:if test="$author_text">
+        <field name="turina_author_ms">
+          <xsl:value-of select="$author_text"/>
+          <xsl:if test="$role">
+            <xsl:text> (</xsl:text>
+            <xsl:value-of select="$role"/>
+            <xsl:text>)</xsl:text>
+          </xsl:if>
         </field>
       </xsl:if>
     </xsl:for-each>

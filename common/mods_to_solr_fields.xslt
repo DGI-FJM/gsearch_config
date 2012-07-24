@@ -1,6 +1,8 @@
 <xsl:stylesheet version="1.0"
   xmlns:mods="http://www.loc.gov/mods/v3"
-  xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+  xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+  xmlns:java="http://xml.apache.org/xalan/java"
+    exclude-result-prefixes="java mods">
   <xsl:output method="xml" indent="yes" encoding="UTF-8"/>
   
   <!-- Basic MODS -->
@@ -126,11 +128,11 @@
     <xsl:param name="sub_title" select="normalize-space($node/mods:subTitle/text())"/>
     
     <xsl:if test="$base_title">
-      <xsl:if test="$non_sort">
-        <xsl:value-of select="$non_sort"/>
-        <xsl:text> </xsl:text>
-      </xsl:if>
-      <xsl:value-of select="$base_title"/>
+      <!-- grab the first character, uppercase it, and concat stuff back together -->
+      <xsl:variable name="first_temp" select="java:substring($base_title, 0, 1)"/>
+      <xsl:variable name="first" select="java:toUpperCase($first_temp)"/>
+      <xsl:variable name="remaining" select="java:substring($base_title, 1)"/>
+      <xsl:value-of select="concat($first, $remaining)"/>
       <xsl:if test="$sub_title">
         <xsl:text>: </xsl:text>
         <xsl:value-of select="$sub_title"/>
@@ -297,9 +299,21 @@
       </xsl:if>
     </xsl:for-each>
     
+    <xsl:variable name="associated_spec">
+      <xsl:choose>
+        <xsl:when test="@type">
+          <xsl:text>_</xsl:text>
+          <xsl:value-of select="@type"/>
+        </xsl:when>
+        <xsl:otherwise>
+          <!-- nothing doing -->
+        </xsl:otherwise>
+      </xsl:choose>
+    </xsl:variable>
+
     <field>
       <xsl:attribute name="name">
-        <xsl:value-of select="concat($prefix, 'name_associated', $spec, $suffix)"/>
+        <xsl:value-of select="concat($prefix, 'name_associated', $associated_spec, $suffix)"/>
       </xsl:attribute>
 
       <xsl:call-template name="name_parts_given_first">
@@ -309,7 +323,7 @@
     
     <field>
       <xsl:attribute name="name">
-        <xsl:value-of select="concat($prefix, 'rname_associated', $spec, $suffix)"/>
+        <xsl:value-of select="concat($prefix, 'rname_associated', $associated_spec, $suffix)"/>
       </xsl:attribute>
 
       <xsl:call-template name="name_parts_given_last">
