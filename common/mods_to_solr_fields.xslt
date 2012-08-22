@@ -369,7 +369,7 @@
       <xsl:if test="$text_value">
         <xsl:value-of select="normalize-space(text())"/>
         <xsl:if test="position()!=last()">
-          <xsl:text> </xsl:text>
+          <xsl:text>, </xsl:text>
         </xsl:if>
       </xsl:if>
     </xsl:for-each>
@@ -529,12 +529,13 @@
     
     <xsl:variable name="text_value" select="normalize-space(text())"/>
     <xsl:if test="$text_value">
+      <!-- XXX: make the assumptions that we'll get copied into this field
       <field>
         <xsl:attribute name="name">
           <xsl:value-of select="concat($prefix, local-name(), $suffix)"/>
         </xsl:attribute>
         <xsl:value-of select="$text_value"/>
-      </field>
+      </field>-->
       <field>
         <xsl:attribute name="name">
           <xsl:value-of select="concat($prefix, local-name(), '_s')"/>

@@ -499,19 +499,18 @@
      <str name="qf">
         PID^16.0
         mods_abstract_mt
-        mods_name_author_mt
-        mods_title_mt^4.0
-        mods_subTitle_mt^3.5
+        turina_author_mt
+        mods_title_local_mt^4.0
         mods_host_title_mt^2.0
-        mods_dateIssued_mt
+        mods_originInfo_dateIssued_mt
         mods_isbn_mt^6.0
         mods_issn_mt^6.0
         mods_note_mt
         mods_subject_mt^2.0
         mods_languageTerm_mt
-        mods_genre_endnote_mt
-        mods_publisher_mt^2.0
+        mods_originInfo_publisher_mt^2.0
         mods_doi_mt^6.0
+        fulltext_mt
      </str>
      <str name="fl">
         * score

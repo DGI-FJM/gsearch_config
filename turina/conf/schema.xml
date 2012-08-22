@@ -192,7 +192,7 @@
 
     <fieldType name="mappedKeyword" class="solr.TextField">
       <analyzer>
-        <charFilter class="solr.MappingCharFilterFactory" mapping="mapping-ISOLatin1Accent.txt"/>
+        <charFilter class="solr.MappingCharFilterFactory" mapping="map-all-except-n-tilde.txt"/>
         <tokenizer class="solr.KeywordTokenizerFactory"/>
       </analyzer>
     </fieldType>

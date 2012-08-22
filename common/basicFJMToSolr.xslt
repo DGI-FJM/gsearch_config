@@ -159,14 +159,29 @@
     
     <xsl:template name="get_ISO8601_date" xmlns:java="http://xml.apache.org/xalan/java">
       <xsl:param name="date"/>
+
+      <xsl:variable name="frac">([.,][0-9]+)</xsl:variable>
+      <xsl:variable name="sec_el">(\:[0-9]{2}<xsl:value-of select="$frac"/>?)</xsl:variable>
+      <xsl:variable name="min_el">(\:[0-9]{2}(<xsl:value-of select="$frac"/> | <xsl:value-of select="$sec_el"/>))</xsl:variable>
+      <xsl:variable name="time_el">([0-9]{2}(<xsl:value-of select="$frac"/> | <xsl:value-of select="$min_el"/>))</xsl:variable>
+      <xsl:variable name="time_offset">(Z|[+-]<xsl:value-of select="$time_el"/>)</xsl:variable>
+      <xsl:variable name="time_pattern">T<xsl:value-of select="$time_el"/><xsl:value-of select="$time_offset"/>?</xsl:variable>
+
+      <xsl:variable name="day_el">(-[0-9]{2})</xsl:variable>
+      <xsl:variable name="month_el">(-[0-9]{2}<xsl:value-of select="$day_el"/>?)</xsl:variable>
+      <xsl:variable name="date_el">([0-9]{4}<xsl:value-of select="$month_el"/>?)</xsl:variable>
+      <xsl:variable name="date_opt_pattern">(<xsl:value-of select="$date_el"/><xsl:value-of select="$time_el"/>?)</xsl:variable>
+      <xsl:variable name="pattern">(<xsl:value-of select="$time_pattern"/> | <xsl:value-of select="$date_opt_pattern"/>)</xsl:variable>
+
+      <xsl:if test="java:matches($date, $pattern)"> 
+        <!--  XXX: need to add the joda jar to the lib directory to make work? -->
+        <xsl:variable name="dp" select="java:org.joda.time.format.ISODateTimeFormat.dateTimeParser()"/>
+        <xsl:variable name="parsed" select="java:parseDateTime($dp, $date)"/>
       
-      <!--  XXX: need to add the joda jar to the lib directory to make work? -->
-      <xsl:variable name="dp" select="java:org.joda.time.format.ISODateTimeFormat.dateTimeParser()"/>
-      <xsl:variable name="parsed" select="java:parseDateTime($dp, $date)"/>
-      
-      <xsl:variable name="f" select="java:org.joda.time.format.ISODateTimeFormat.dateTime()"/>
-      <xsl:variable name="df" select="java:withZoneUTC($f)"/>
-      <xsl:value-of select="java:print($df, $parsed)"/>
+        <xsl:variable name="f" select="java:org.joda.time.format.ISODateTimeFormat.dateTime()"/>
+        <xsl:variable name="df" select="java:withZoneUTC($f)"/>
+        <xsl:value-of select="java:print($df, $parsed)"/>
+      </xsl:if>
     </xsl:template>
     
     <xsl:template name="get_concert_date">

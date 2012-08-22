@@ -102,6 +102,7 @@
 
      <!-- Names and Roles -->
     <xsl:apply-templates select="foxml:datastream[@ID='MODS']/foxml:datastreamVersion[last()]/foxml:xmlContent//mods:mods" mode="default"/>
+    <xsl:apply-templates select="foxml:datastream[@ID='MODS']/foxml:datastreamVersion[last()]/foxml:xmlContent//mods:mods" mode="ceacs"/>
     
     <!-- store an escaped copy of MODS... -->
     <xsl:if test="foxml:datastream[@ID='MODS']/foxml:datastreamVersion[last()]/foxml:xmlContent//mods:mods">
@@ -134,6 +135,48 @@
             </field>
           </xsl:otherwise>
         </xsl:choose>
+    </xsl:for-each>
+  </xsl:template>
+
+  <!-- XXX: not really liking this... creating a couple fields from the MODS
+     which didn't exist due to indexing changes -->
+  <xsl:template match="mods:mods" mode="ceacs">
+    <xsl:for-each select="mods:originInfo/mods:dateIssued[1]">
+      <xsl:variable name="textValue" select="normalize-space(text())"/>
+      <xsl:if test="$textValue">
+        <xsl:variable name="date">
+          <xsl:call-template name="get_ISO8601_date">
+            <!-- currently in basicFJMToSolr -->
+            <xsl:with-param name="date" select="$textValue"/>
+          </xsl:call-template>
+        </xsl:variable>
+        <xsl:choose>
+          <xsl:when test="normalize-space($date)">
+            <field name="mods_dateIssued_dt">
+              <xsl:value-of select="normalize-space($date)"/>
+            </field>
+          </xsl:when>
+          <xsl:otherwise>
+            <field name="mods_dateIssued_mlt">
+               <xsl:value-of select="$textValue"/>
+            </field>
+          </xsl:otherwise>
+        </xsl:choose>
+      </xsl:if>
+    </xsl:for-each>
+
+    <xsl:for-each select="mods:name">
+      <xsl:variable name="name_temp">
+        <xsl:call-template name="name_parts_given_last">
+          <xsl:with-param name="node" select="current()"/>
+        </xsl:call-template>
+      </xsl:variable>
+      <xsl:variable name="name" select="normalize-space($name_temp)"/>
+      <xsl:if test="$name">
+        <field name="mods_rname_associated_ms">
+          <xsl:value-of select="$name"/>
+        </field>
+      </xsl:if>
     </xsl:for-each>
   </xsl:template>
 
