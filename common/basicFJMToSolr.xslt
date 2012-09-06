@@ -35,6 +35,7 @@
     <xsl:param name="FEDORAUSERNAME" select="''"/>
     <xsl:param name="FEDORAPASSWORD" select="''"/>
     <xsl:param name="NAMESPACE" select="'http://digital.march.es/atmusica#'"/>
+    <xsl:param name="debug" select="false"/>
     
     <xsl:template name="traverse_graph">
       <xsl:param name="start"/> <!--  the PID we're starting from -->
@@ -208,44 +209,52 @@ WHERE {
       <xsl:param name="query"/>
       
       <xsl:variable name="traverse" select="xalan:nodeset($to_traverse_in)"/>
-      <xsl:message>Traverse:
-        <xsl:for-each select="$traverse//*[@uri]">
-          <xsl:value-of select="name()"/>:<xsl:value-of select="@uri"/>
-        </xsl:for-each>
-      </xsl:message>
+      <xsl:if test="$debug">
+        <xsl:message>Traverse:
+          <xsl:for-each select="$traverse//*[@uri]">
+            <xsl:value-of select="name()"/>:<xsl:value-of select="@uri"/>
+          </xsl:for-each>
+        </xsl:message>
+      </xsl:if>
       <xsl:variable name="traversed" select="xalan:nodeset($traversed_in)"/>
-      <xsl:message>Traversed:
-        <xsl:for-each select="$traversed//*[@uri]">
-          <xsl:value-of select="name()"/>:<xsl:value-of select="@uri"/>
-        </xsl:for-each>
-      </xsl:message>
+      <xsl:if test="$debug">
+        <xsl:message>Traversed:
+          <xsl:for-each select="$traversed//*[@uri]">
+            <xsl:value-of select="name()"/>:<xsl:value-of select="@uri"/>
+          </xsl:for-each>
+        </xsl:message>
+      </xsl:if>
       <xsl:variable name="difference" select="xalan:nodeset(set:difference($traverse, $traversed))"/>
-      <xsl:message>Difference:
-        <xsl:value-of select="count($difference/res:result/res:obj)"/>
-        <xsl:for-each select="$difference//*[@uri]">
-          <xsl:value-of select="name()"/>:<xsl:value-of select="@uri"/>
-        </xsl:for-each>
-      </xsl:message>
+      <xsl:if test="$debug">
+        <xsl:message>Difference:
+          <xsl:value-of select="count($difference/res:result/res:obj)"/>
+          <xsl:for-each select="$difference//*[@uri]">
+            <xsl:value-of select="name()"/>:<xsl:value-of select="@uri"/>
+          </xsl:for-each>
+        </xsl:message>
+      </xsl:if>
       <xsl:choose>
         <xsl:when test="count($difference/res:result/res:obj) = 0">
           <!-- There is nothing to traverse which has not already been traversed...  -->
-          <!--  TODO: Start indexing/return! -->
-          <xsl:message>
-            To index:
-            <xsl:for-each select="$traversed//*[@uri]">
-              <xsl:value-of select="@uri"/>
-            </xsl:for-each>
-          </xsl:message>
+          <xsl:if test="$debug">
+            <xsl:message>
+              To index:
+              <xsl:for-each select="$traversed//*[@uri]">
+                <xsl:value-of select="@uri"/>
+              </xsl:for-each>
+            </xsl:message>
+          </xsl:if>
           <xsl:copy-of select="$traversed/res:result/res:obj"/>
         </xsl:when>
         <xsl:otherwise>
           <xsl:variable name="to_traverse">
             <res:result>
               <xsl:for-each select="$difference/res:result/res:obj">
-                <xsl:message>diff: <xsl:value-of select="@uri"/></xsl:message>
+                <xsl:if test="$debug">
+                  <xsl:message>diff: <xsl:value-of select="@uri"/></xsl:message>
+                </xsl:if>
                 <xsl:variable name="query_results">
                   <xsl:call-template name="perform_query">
-                    <!-- TODO:  Add the query... -->
                     <xsl:with-param name="query">
                       <xsl:value-of select="substring-before($query, '%PID_URI%')"/>
                       <xsl:value-of select="@uri"/>
@@ -294,11 +303,12 @@ WHERE {
           <xsl:with-param name="start" select="$pid"/>
         </xsl:call-template>
       </xsl:variable>
-      <xsl:message terminate="yes">Hard stop.</xsl:message>
         
       <xsl:for-each select="xalan:nodeset($to_index_tf)/res:result/res:obj">
         <xsl:variable name="pid_to_index" select="substring-after(@uri, '/')"/>
-        <xsl:message>PID: <xsl:value-of select="$pid_to_index"/></xsl:message>
+        <xsl:if test="$debug">
+          <xsl:message>PID: <xsl:value-of select="$pid_to_index"/></xsl:message>
+        </xsl:if>
         
         <!-- Index based on CModel -->
         <xsl:variable name="models">
@@ -308,7 +318,9 @@ WHERE {
         </xsl:variable>
       
         <xsl:for-each select="xalan:nodeset($models)/res:sparql/res:results/res:result/res:model">
-          <xsl:message>Model: <xsl:value-of select="@uri"/></xsl:message>
+          <xsl:if test="$debug">
+            <xsl:message>Model: <xsl:value-of select="@uri"/></xsl:message>
+          </xsl:if>
             <!--  TODO:  Make use the models returned from the "get_models" call, instead of grabbing the RDF. -->
             <!-- <xsl:for-each select="document(concat($PROT, '://', $FEDORAUSERNAME, ':', $FEDORAPASSWORD, '@',
                     $HOST, ':', $PORT, '/fedora/objects/', $pid, '/datastreams/RELS-EXT/content'))/rdf:RDF/rdf:Description/*[local-name()='hasModel' and @rdf:resource]"> -->
@@ -322,10 +334,6 @@ WHERE {
                 <xsl:call-template name="atm_performance">
                     <xsl:with-param name="pid" select="$pid_to_index"/>
                 </xsl:call-template>
-                <!--
-                <xsl:call-template name="atm_performer">
-                    <xsl:with-param name="performance" select="$pid"/>
-                </xsl:call-template>-->
             </xsl:when>
             <xsl:when test="@uri='info:fedora/atm:scoreCModel'">
                 <!-- Index the score and then all concerts which contain a performances based on the score -->
@@ -353,12 +361,11 @@ WHERE {
                     <xsl:with-param name="pid" select="$pid_to_index"/>
                 </xsl:call-template>
             </xsl:when>
-            <!-- Handled elsewhere...  Likely through performance.
             <xsl:when test="@rdf:resource='info:fedora/atm:performerCModel'">
                 <xsl:call-template name="atm_performer">
-                    <xsl:with-param name="pid" select="$$pid_to_index"/>
+                    <xsl:with-param name="pid" select="$pid_to_index"/>
                 </xsl:call-template>
-            </xsl:when>-->
+            </xsl:when>
             <xsl:when test="@uri='info:fedora/fedora-system:FedoraObject-3.0'"/>
             <xsl:otherwise>
               <doc>
@@ -432,18 +439,24 @@ WHERE {
 
       <xsl:variable name="frac">([.,][0-9]+)</xsl:variable>
       <xsl:variable name="sec_el">(\:[0-9]{2}<xsl:value-of select="$frac"/>?)</xsl:variable>
-      <xsl:variable name="min_el">(\:[0-9]{2}(<xsl:value-of select="$frac"/> | <xsl:value-of select="$sec_el"/>))</xsl:variable>
-      <xsl:variable name="time_el">([0-9]{2}(<xsl:value-of select="$frac"/> | <xsl:value-of select="$min_el"/>))</xsl:variable>
+      <xsl:variable name="min_el">(\:[0-9]{2}(<xsl:value-of select="$frac"/>|<xsl:value-of select="$sec_el"/>))</xsl:variable>
+      <xsl:variable name="time_el">([0-9]{2}(<xsl:value-of select="$frac"/>|<xsl:value-of select="$min_el"/>))</xsl:variable>
       <xsl:variable name="time_offset">(Z|[+-]<xsl:value-of select="$time_el"/>)</xsl:variable>
       <xsl:variable name="time_pattern">T<xsl:value-of select="$time_el"/><xsl:value-of select="$time_offset"/>?</xsl:variable>
 
       <xsl:variable name="day_el">(-[0-9]{2})</xsl:variable>
       <xsl:variable name="month_el">(-[0-9]{2}<xsl:value-of select="$day_el"/>?)</xsl:variable>
       <xsl:variable name="date_el">([0-9]{4}<xsl:value-of select="$month_el"/>?)</xsl:variable>
-      <xsl:variable name="date_opt_pattern">(<xsl:value-of select="$date_el"/><xsl:value-of select="$time_el"/>?)</xsl:variable>
-      <xsl:variable name="pattern">(<xsl:value-of select="$time_pattern"/> | <xsl:value-of select="$date_opt_pattern"/>)</xsl:variable>
+      <xsl:variable name="date_opt_pattern">(<xsl:value-of select="$date_el"/><xsl:value-of select="$time_pattern"/>?)</xsl:variable>
+      <xsl:variable name="pattern">(<xsl:value-of select="$time_pattern"/>|<xsl:value-of select="$date_opt_pattern"/>)</xsl:variable>
 
-      <xsl:if test="java:matches(string($date), $pattern)"> 
+      <xsl:if test="$debug">
+        <xsl:message>Date to parse: <xsl:value-of select="$date"/></xsl:message>
+      </xsl:if>
+      <xsl:if test="java:matches(string($date), $pattern)">
+        <xsl:if test="$debug">
+          <xsl:message>Parsing: <xsl:value-of select="$date"/></xsl:message>
+        </xsl:if>
         <!--  XXX: need to add the joda jar to the lib directory to make work? -->
         <xsl:variable name="dp" select="java:org.joda.time.format.ISODateTimeFormat.dateTimeParser()"/>
         <xsl:variable name="parsed" select="java:parseDateTime($dp, $date)"/>
@@ -461,17 +474,20 @@ WHERE {
       <xsl:variable name="temp_date">
         <xsl:choose>
           <xsl:when test="$mods/m:originInfo/m:dateCreated[@encoding='iso8601']">
-            <xsl:value-of select="normalize-space($mods/m:originInfo/m:dateCreated[@encoding='iso8601']/text())"/>
+            <xsl:value-of select="$mods/m:originInfo/m:dateCreated[@encoding='iso8601']/text()"/>
           </xsl:when>
           <xsl:otherwise>
               <xsl:variable name="C_CUSTOM" select="document(concat($PROT, '://', $FEDORAUSERNAME, ':', $FEDORAPASSWORD, '@', $HOST, ':', $PORT, '/fedora/objects/', $concert_pid, '/datastreams/CustomXML/content'))"/>
               <!-- FIXME:  The date should be in MODS (and/or somewhere else (DC?), and obtained from there), so the original XML need not be stored...
                   Also, the whole "concat(..., 'Z')" seems a little flimsy-->
-              <xsl:value-of select="normalize-space($C_CUSTOM/Concierto/FECHA/text())"/>
+              <xsl:value-of select="$C_CUSTOM/Concierto/FECHA/text()"/>
           </xsl:otherwise>
         </xsl:choose>
       </xsl:variable>
       
+      <xsl:if test="$debug">
+        <xsl:message>Temp date: <xsl:value-of select="$temp_date"/></xsl:message>
+      </xsl:if>
       <xsl:if test="normalize-space($temp_date)">
         <xsl:call-template name="get_ISO8601_date">
           <xsl:with-param name="date" select="$temp_date"/>
@@ -512,16 +528,6 @@ WHERE {
     </xsl:template>
     
     <xsl:template match="* | text()" mode="atm_concert"/>
-    
-    <xsl:template name="add_referenced_pids">
-      <xsl:param name="results"/>
-      
-      <xsl:for-each select="res:result/*[@uri]">
-        <field name="referenced_pids_ms">
-          <xsl:value-of select="normalize-space(substring-after(@uri, '/'))"/>
-        </field>
-      </xsl:for-each>
-    </xsl:template>
     
     <xsl:template name="atm_concert">
         <xsl:param name="pid" select="no_pid"/>
@@ -584,11 +590,6 @@ WHERE {
                 </xsl:call-template>
             </xsl:variable>
             <xsl:variable name="SCORES" select="xalan:nodeset($SCORE_QUERY_TF)/res:sparql/res:results"/>
-                        
-            <!-- reference pids -->
-            <xsl:call-template name="add_referenced_pids">
-              <xsl:with-param name="results" select="$SCORES"/>
-            </xsl:call-template>
             
             <xsl:for-each select='$SCORES/res:result'>
                 <field name="atm_concert_piece_ms">
@@ -615,8 +616,6 @@ WHERE {
                     </people>
                 </xsl:variable>
                 <xsl:for-each select="xalan:nodeset($PERSON_GROUP_MEMBERSHIP)/people/doc[field[@name='atm_type_s']/text()='Intérpretes']">
-                    <!--  referenced pids -->
-                    <xsl:copy-of select="field[@name='referenced_pids_ms']"/>
                     <field name="atm_concert_group_ms">
                         <xsl:value-of select="field[@name='atm_performer_group_s']/text()"/>
                     </field>
@@ -753,20 +752,8 @@ WHERE {
                 
                 <field name="atm_type_s">Obras</field>
                 
-                <!--  referenced pids -->
-                <xsl:for-each select="$SCORES/*[@uri]">
-                  <field name="referenced_pids_ms">
-                    <xsl:value-of select="normalize-space(substring-after(@uri, '/'))"/>
-                  </field>
-                </xsl:for-each>
-                
                 <xsl:call-template name="rels_ext">
                     <xsl:with-param name="pid" select="$pid"/>
-                </xsl:call-template>
-                
-                <!--  referenced pids -->
-                <xsl:call-template name="add_referenced_pids">
-                  <xsl:with-param name="results" select="$MOVEMENTS/res:sparql/res:results"/>
                 </xsl:call-template>
                 
                 <xsl:for-each select="$MOVEMENTS/res:sparql/res:results/res:result">
@@ -887,8 +874,6 @@ WHERE {
                 </field>
         
                 <xsl:for-each select="$PLAYERS/people/doc[field[@name='atm_type_s']/text()='Intérpretes']">
-                    <!--  referenced pids -->
-                    <xsl:copy-of select="field[@name='referenced_pids_ms']"/>
                     <xsl:variable name="person_pid" select="normalize-space(field[@name='PID']/text())"/>
                     <xsl:variable name="name" select="normalize-space(field[@name='atm_performer_name_s']/text())"/>
                     <xsl:variable name="group" select="normalize-space(field[@name='atm_performer_group_s']/text())"/> 
@@ -955,11 +940,6 @@ WHERE {
                     ')"/>
                 </xsl:call-template>
             </xsl:variable>
-            
-            <!--  referenced pids -->
-            <xsl:call-template name="add_referenced_pids">
-              <xsl:with-param name="results" select="xalan:nodeset($ITEM_TF)/res:sparql/res:results"/>
-            </xsl:call-template>
             
             <xsl:for-each select="xalan:nodeset($ITEM_TF)/res:sparql/res:results/res:result">
                 <field name="title_s">    
@@ -1028,13 +1008,6 @@ WHERE {
                 <xsl:value-of select="$pid"/>
             </field>
             
-            <!--  referenced pids -->
-            <xsl:for-each select="$SCORE_RESULT/*[@uri]">  
-              <field name="referenced_pids_ms">
-                <xsl:value-of select="normalize-space(substring-after(@uri, '/'))"/>
-              </field>
-            </xsl:for-each>
-            
             <xsl:call-template name="rels_ext">
                 <xsl:with-param name="pid" select="$pid"/>
             </xsl:call-template>
@@ -1074,9 +1047,6 @@ WHERE {
                     </people>
                 </xsl:variable>
                 <xsl:for-each select="xalan:nodeset($PERFORMER_TF)/people/doc[field[@name='atm_type_s']/text()='Intérpretes']">
-                    <!--  referenced pids -->
-                    <xsl:copy-of select="field[@name='referenced_pids_ms']"/>
-                    
                     <field name="atm_score_concert_pid_ms">
                         <xsl:value-of select="field[@name='atm_performer_concert_pid_s']"/>
                     </field>
@@ -1163,10 +1133,6 @@ WHERE {
                 </xsl:call-template>
             </xsl:variable>
             <xsl:variable name="CONCERT_INFO" select="xalan:nodeset($CONCERT_QUERY_TF)/res:sparql/res:results"/>
-            
-            <xsl:call-template name="add_referenced_pids">
-              <xsl:with-param name="results" select="$CONCERT_INFO"/>
-            </xsl:call-template>
             
             <field name="atm_program_concert_title_s">
                 <xsl:value-of select="normalize-space($CONCERT_INFO/res:result[1]/res:concertTitle/text())"/>
@@ -1267,11 +1233,6 @@ WHERE {
             </xsl:variable>
             <xsl:variable name="LECT" select="xalan:nodeset($LECT_TF)/res:sparql/res:results"/>
             
-            <!--  referenced pids -->
-            <xsl:call-template name="add_referenced_pids">
-              <xsl:with-param name="results" select="$LECT"/>
-            </xsl:call-template>
-            
             <xsl:for-each select="$LECT/res:result[1]">
                 <field name="atm_type_s">Archivo de voz</field>
                 <field name="atm_lecture_title_s">
@@ -1362,12 +1323,6 @@ WHERE {
             </field>
             
             <xsl:for-each select="xalan:nodeset($COMPOSER_TF)/res:sparql/res:results/res:result">
-                <!--  referenced pids -->
-                <xsl:for-each select="*[@uri]">
-                  <field name="referenced_pids_ms">
-                    <xsl:value-of select="substring-after(@uri, '/')"/>
-                  </field>
-                </xsl:for-each>
                 <field name="atm_composer_name_s">
                     <xsl:value-of select="normalize-space(res:name/text())"/>
                 </field>
@@ -1395,13 +1350,6 @@ WHERE {
             </xsl:if>
             
             <xsl:for-each select="xalan:nodeset($COMPOSER_CONCERT_TF)/res:sparql/res:results/res:result">
-                <!--  referenced pids -->
-                <xsl:for-each select="*[@uri]">
-                  <field name="referenced_pids_ms">
-                    <xsl:value-of select="substring-after(@uri, '/')"/>
-                  </field>
-                </xsl:for-each>
-                
                 <field name="atm_facet_concert_title_ms">
                     <xsl:value-of select="res:concertName/text()"/>
                 </field>
@@ -1507,13 +1455,6 @@ WHERE {
                 </field>
                 <field name="atm_type_s">Intérpretes</field>
                 
-                <!--  referenced pids -->
-                <xsl:for-each select="*[@uri]">
-                  <field name="referenced_pids_ms">
-                    <xsl:value-of select="substring-after(@uri, '/')"/>
-                  </field>
-                </xsl:for-each>
-            
                 <field name="atm_performer_name_s">
                     <xsl:value-of select="normalize-space(res:personName/text())"/>
                 </field>
