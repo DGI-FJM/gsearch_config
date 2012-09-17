@@ -414,12 +414,13 @@ WHERE {
         </xsl:choose>
       </xsl:variable>
       
-      <xsl:variable name="date">
+      <xsl:variable name="temp_date">
         <xsl:call-template name="get_concert_date">
           <xsl:with-param name="concert_pid" select="$pid"/>
           <xsl:with-param name="mods" select="current()"/>
         </xsl:call-template>
       </xsl:variable>
+      <xsl:variable name="date" select="normalize-space($temp_date)"/>
       
       <xsl:if test="$date">
         <field name="atm_concert_date_dt"><xsl:value-of select="$date"/></field>
@@ -792,11 +793,12 @@ WHERE {
                     <!--<xsl:value-of select="normalize-space($C_MODS/m:modsCollection/m:mods/m:name[@type='conference']/m:namePart/text())"/>-->
                 </field>
 
-                <xsl:variable name="date">
+                <xsl:variable name="temp_date">
                   <xsl:call-template name="get_concert_date">
                     <xsl:with-param name="concert_pid" select="substring-after($SCORES/res:concert/@uri, '/')"/>
                   </xsl:call-template>
                 </xsl:variable>
+                <xsl:variable name="date" select="normalize-space($temp_date)"/>
                 
                 <xsl:if test="$date">
                   <xsl:variable name="year" select="substring($date, 1, 4)"/>
@@ -1161,20 +1163,23 @@ WHERE {
                 </field>
             </xsl:if>
             
-            <xsl:variable name="date">
+            <xsl:variable name="temp_date">
               <xsl:call-template name="get_concert_date">
                 <xsl:with-param name="concert_pid" select="substring-after($CONCERT_INFO/res:result[1]/res:concert/@uri, '/')"/>
               </xsl:call-template>
             </xsl:variable>
-            <field name="atm_program_date_dt">
-                <xsl:value-of select="$date"/>
-            </field>
-            <field name="atm_program_year_s">
-                <xsl:value-of select="substring($date, 1, 4)"/>
-            </field>
-            <field name="atm_facet_year_s">
-                <xsl:value-of select="substring($date, 1, 4)"/>
-            </field>
+            <xsl:variable name="date" select="normalize-space($temp_date)"/>
+            <xsl:if test="$date">
+              <field name="atm_program_date_dt">
+                  <xsl:value-of select="$date"/>
+              </field>
+              <field name="atm_program_year_s">
+                  <xsl:value-of select="substring($date, 1, 4)"/>
+              </field>
+              <field name="atm_facet_year_s">
+                  <xsl:value-of select="substring($date, 1, 4)"/>
+              </field>
+            </xsl:if>
             
             <!-- FIXME (major): Trigger reindex when author object changes.
                 NOTE:  The 'Texto Compositores' entry is created on ingest, and is actually created from the object "atm:composerText"-->
@@ -1250,17 +1255,20 @@ WHERE {
                 <field name="atm_facet_concert_cycle_s">
                     <xsl:value-of select="normalize-space(res:concertCycle/text())"/>
                 </field>
-                <xsl:variable name="date">
+                <xsl:variable name="temp_date">
                   <xsl:call-template name="get_concert_date">
                     <xsl:with-param name="concert_pid" select="substring-after($LECT/res:result[1]/res:concert/@uri, '/')"/>
                   </xsl:call-template>
                 </xsl:variable>
-                <field name="atm_facet_concert_date_dt">
-                    <xsl:value-of select="$date"/>
-                </field>
-                <field name="atm_facet_year_s">
-                    <xsl:value-of select="substring($date, 1, 4)"/>
-                </field>
+                <xsl:variable name="date" select="normalize-space($temp_date)"/>
+                <xsl:if test="$date">
+                  <field name="atm_facet_concert_date_dt">
+                      <xsl:value-of select="$date"/>
+                  </field>
+                  <field name="atm_facet_year_s">
+                      <xsl:value-of select="substring($date, 1, 4)"/>
+                  </field>
+                </xsl:if>
             </xsl:for-each>
             
             <xsl:call-template name="rels_ext">
@@ -1501,11 +1509,12 @@ WHERE {
                     <xsl:value-of select="normalize-space(res:pieceName/text())"/>
                 </field>
                 <!-- TODO: get the concert date from somewhere... -->
-                <xsl:variable name="date">
+                <xsl:variable name="temp_date">
                   <xsl:call-template name="get_concert_date">
                     <xsl:with-param name="concert_pid" select="substring-after(res:concert/@uri, '/')"/>
                   </xsl:call-template>
                 </xsl:variable>
+                <xsl:variable name="date" select="normalize-space($temp_date)"/>
                 <xsl:if test="$date">
                     <field name="atm_performer_date_dt">
                         <xsl:value-of select="$date"/>
