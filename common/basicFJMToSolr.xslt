@@ -514,7 +514,7 @@ WHERE {
     </xsl:template>
     
     <!-- build the title for the current concert from MODS titleInfo -->
-    <xsl:template match="m:titleInfo" mode="atm_concert">
+    <xsl:template match="m:titleInfo[not(@type='alternative')]" mode="atm_concert">
       <xsl:variable name="title">
         <xsl:call-template name="mods_titleInfo">
           <xsl:with-param name="node" select="current()"/>
