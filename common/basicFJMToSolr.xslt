@@ -361,7 +361,7 @@ WHERE {
                     <xsl:with-param name="pid" select="$pid_to_index"/>
                 </xsl:call-template>
             </xsl:when>
-            <xsl:when test="@rdf:resource='info:fedora/atm:performerCModel'">
+            <xsl:when test="@uri='info:fedora/atm:performerCModel'">
                 <xsl:call-template name="atm_performer">
                     <xsl:with-param name="pid" select="$pid_to_index"/>
                 </xsl:call-template>
