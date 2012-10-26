@@ -73,6 +73,7 @@
             <xsl:when test="starts-with($PID, 'jt')"/>
             <xsl:when test="starts-with($PID, 'ir')"/>
             <xsl:when test="starts-with($PID, 'cam')"/>
+			<xsl:when test="starts-with($PID, 'cat')"/>
             <xsl:otherwise>
               <doc>
                 <xsl:choose>
