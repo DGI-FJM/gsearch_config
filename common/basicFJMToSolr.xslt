@@ -19,7 +19,9 @@
         xmlns:fedora-rels-ext="info:fedora/fedora-system:def/relations-external#"
         xmlns:encoder="xalan://java.net.URLEncoder"
         xmlns:eac-cpf="urn:isbn:1-931666-33-4"
-            exclude-result-prefixes="exts m rdf res fds ns xalan set encoder eac-cpf">
+        xmlns:oai_dc="http://www.openarchives.org/OAI/2.0/oai_dc/"
+        xmlns:dc="http://purl.org/dc/elements/1.1/"
+            exclude-result-prefixes="exts m rdf res fds ns xalan set encoder eac-cpf oai_dc dc">
     <xsl:output method="xml" indent="yes" encoding="UTF-8"/>
     
     <!-- FIXME:  Should probably get these as parameters, or sommat -->
@@ -375,6 +377,9 @@ WHERE {
                 <xsl:call-template name="rels_ext">
                   <xsl:with-param name="pid" select="$pid_to_index"/>
                 </xsl:call-template>
+                <xsl:call-template name="dc">
+                  <xsl:with-param name="pid" select="$pid_to_index"/>
+                </xsl:call-template>
               </doc>
             </xsl:otherwise>
           </xsl:choose>
@@ -665,6 +670,10 @@ WHERE {
                     <xsl:value-of select="substring-after(res:thumbnail/@uri, '/')"/>
                 </field>
             </xsl:for-each>
+
+            <xsl:call-template name="dc">
+              <xsl:with-param name="pid" select="$pid"/>
+            </xsl:call-template>
         </doc>
     </xsl:template>
     
@@ -909,6 +918,10 @@ WHERE {
                         <xsl:value-of select="$class"/>
                     </field>
                 </xsl:for-each>
+
+                <xsl:call-template name="dc">
+                  <xsl:with-param name="pid" select="$pid"/>
+                </xsl:call-template>
             </doc>
         </xsl:if>
     </xsl:template>
@@ -924,6 +937,11 @@ WHERE {
             <xsl:call-template name="rels_ext">
                 <xsl:with-param name="pid" select="$pid"/>
             </xsl:call-template>
+
+            <xsl:call-template name="dc">
+              <xsl:with-param name="pid" select="$pid"/>
+            </xsl:call-template>
+
             <field name="hasMP3_b">
                 <xsl:choose>
                     <xsl:when test="document(concat($PROT, '://', $FEDORAUSERNAME, ':', $FEDORAPASSWORD, '@', $HOST, ':', $PORT, '/fedora/objects/', $pid , '/datastreams?format=xml'))/fds:objectDatastreams/fds:datastream[@dsid='MP3']">true</xsl:when>
@@ -1013,6 +1031,10 @@ WHERE {
             <xsl:call-template name="rels_ext">
                 <xsl:with-param name="pid" select="$pid"/>
             </xsl:call-template>
+
+            <xsl:call-template name="dc">
+              <xsl:with-param name="pid" select="$pid"/>
+            </xsl:call-template>
             
             <field name="atm_type_s">Partituras</field>
             
@@ -1098,6 +1120,10 @@ WHERE {
             
             <xsl:call-template name="rels_ext">
                 <xsl:with-param name="pid" select="$pid"/>
+            </xsl:call-template>
+
+            <xsl:call-template name="dc">
+              <xsl:with-param name="pid" select="$pid"/>
             </xsl:call-template>
             
             <xsl:variable name="CONCERT_QUERY_TF">
@@ -1274,6 +1300,9 @@ WHERE {
             <xsl:call-template name="rels_ext">
                 <xsl:with-param name="pid" select="$pid"/>
             </xsl:call-template>
+            <xsl:call-template name="dc">
+              <xsl:with-param name="pid" select="$pid"/>
+            </xsl:call-template>
         </doc>
     </xsl:template>
     
@@ -1391,6 +1420,9 @@ WHERE {
             
             <xsl:call-template name="rels_ext">
                 <xsl:with-param name="pid" select="$pid"/>
+            </xsl:call-template>
+            <xsl:call-template name="dc">
+              <xsl:with-param name="pid" select="$pid"/>
             </xsl:call-template>
 
             <xsl:call-template name="digital_objects">
@@ -1531,6 +1563,9 @@ WHERE {
                 
                 <xsl:call-template name="rels_ext">
                     <xsl:with-param name="pid" select="substring-after(res:performerObj/@uri, '/')"/>
+                </xsl:call-template>
+                <xsl:call-template name="dc">
+                  <xsl:with-param name="pid" select="substring-after(res:performerObj/@uri, '/')"/>
                 </xsl:call-template>
                 
                 <!-- Not really needed, but it'll allow them to sort nicely... (Used in A-Z selector)  Blargh. -->
@@ -1844,6 +1879,32 @@ WHERE {
                 </xsl:choose>
             </field>
         </xsl:for-each>
+    </xsl:template>
+
+    <xsl:template name="dc">
+      <xsl:param name="pid"/>
+      <!-- Get the DC for the given pid, and apply-templates. -->
+      <xsl:apply-templates select="document(concat($PROT, '://', $FEDORAUSERNAME, ':', $FEDORAPASSWORD, '@', $HOST, ':', $PORT,
+        '/fedora/objects/', $pid, '/datastreams/DC/content'))//oai_dc:dc"/>
+    </xsl:template>
+ 
+    <xsl:template match="oai_dc:dc">
+      <xsl:apply-templates mode="dc"/>
+    </xsl:template>
+
+    <xsl:template match="text()" mode="dc"/>
+
+    <xsl:template match="dc:*" mode="dc">
+      <xsl:variable name="textValue" select="normalize-space(text())"/>
+
+      <xsl:if test="$textValue">
+        <field>
+          <xsl:attribute name="name">
+            <xsl:value-of select="concat('dc_', local-name(), '_et')"/>
+          </xsl:attribute>
+          <xsl:value-of select="$textValue"/>
+        </field>
+      </xsl:if>
     </xsl:template>
     
     <!-- Get the value of the labels for all performers of the piece -->
